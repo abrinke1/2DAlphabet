@@ -23,7 +23,7 @@ test:
     - SCRAM_ARCH=slc7_amd64_gcc700
     - CMSSW_VERSION=CMSSW_10_6_14
     - export $SCRAM_ARCH
-    - eval "$(cmsrel $CMSSW_VERSION)"
+    - cmsrel $CMSSW_VERSION
     - cd $CMSSW_VERSION/src
     - eval "$(scramv1 runtime -sh)"
     # where are we?
