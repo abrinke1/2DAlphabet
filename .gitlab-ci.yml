@@ -9,7 +9,7 @@ test:
     - set -o errexit            # make your script exit when a command fails.
     - set -o pipefail           # exit status of the last command that threw a non-zero exit code is returned
     - shopt -s expand_aliases   # CRUCIAL for cmsrel, etc as aliases not expanded in non-interactive shells
-    - dnf install which         # seems to be missing from runner
+    - dnf install which -y      # seems to be missing from runner
     # Check CVMFS
     - ls /cvmfs/cms.cern.ch/
     # Get number of processors for scram build
