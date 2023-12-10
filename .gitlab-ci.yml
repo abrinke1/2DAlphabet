@@ -1,4 +1,7 @@
 test:
+  image:
+    name: gitlab-registry.cern.ch/linuxsupport/cc7-base
+    entrypoint: [""]
   tags:
     - cvmfs
   only:
