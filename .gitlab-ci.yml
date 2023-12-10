@@ -10,5 +10,21 @@ test:
     - set -o pipefail           # exit status of the last command that threw a non-zero exit code is returned
     - shopt -s expand_aliases   # CRUCIAL for cmsrel, etc as aliases not expanded in non-interactive shells
   script:
-    # check CVMFS
+    # Check CVMFS
     - ls /cvmfs/cms.cern.ch/
+    # Get number of processors for scram build
+    - MAKEFLAGS="-j $(grep -c ^processor /proc/cpuinfo)"
+    # Set up dummy variables for github pull access. 
+    - git config --global user.name "Foo Bar"
+    - git config --global user.email "foo@bar.com"
+    - git config --global user.github "foobar"
+    # Set up and get the CMSSW release
+    - source /cvmfs/cms.cern.ch/cmsset_default.sh
+    - SCRAM_ARCH=slc7_amd64_gcc700
+    - CMSSW_VERSION=CMSSW_10_6_14
+    - export $SCRAM_ARCH
+    - eval "$(cmsrel $CMSSW_VERSION)"
+    - cd $CMSSW_VERSION/src
+    - eval "$(scramv1 runtime -sh)"
+    # where are we?
+    - pwd
