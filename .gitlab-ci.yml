@@ -1,4 +1,5 @@
 test:
+  image: gitlab-registry.cern.ch/cms-cloud/cmssw-docker/cc7-cms
   tags:
     - cvmfs
   only:
@@ -9,8 +10,6 @@ test:
     - set -o errexit            # make your script exit when a command fails.
     - set -o pipefail           # exit status of the last command that threw a non-zero exit code is returned
     - shopt -s expand_aliases   # CRUCIAL for cmsrel, etc as aliases not expanded in non-interactive shells
-    # Install missing packages
-    - yum install which -y
     - uname -r
     # Check CVMFS
     - ls /cvmfs/cms.cern.ch/
@@ -21,6 +20,7 @@ test:
     - git config --global user.email "foo@bar.com"
     - git config --global user.github "foobar"
     # Set up and get the CMSSW release
+    - cd /builds/ammitra
     - source /cvmfs/cms.cern.ch/cmsset_default.sh
     - SCRAM_ARCH=slc7_amd64_gcc700
     - CMSSW_VERSION=CMSSW_10_6_14
@@ -30,7 +30,8 @@ test:
     - cmsenv
     - echo $CMSSW_BASE
     # Build required software
-    - git clone https://github.com/JHU-Tools/2DAlphabet.git
+    #- git clone https://github.com/JHU-Tools/2DAlphabet.git
+    - mv /builds/ammitra/2DAlphabet . # just move the existing 2DAlphabet directory (which should be the one we're testing) here instead of cloning
     - git clone --branch 102x https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit
     - curl -s https://raw.githubusercontent.com/JHU-Tools/CombineHarvester/master/CombineTools/scripts/sparse-checkout-ssh.sh | bash
     - scram build --ignore-arch 
