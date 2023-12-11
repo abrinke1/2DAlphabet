@@ -11,6 +11,7 @@ test:
     - shopt -s expand_aliases   # CRUCIAL for cmsrel, etc as aliases not expanded in non-interactive shells
     # Install missing packages
     - yum install which -y
+    - uname -r
     # Check CVMFS
     - ls /cvmfs/cms.cern.ch/
     # Get number of processors for scram build
@@ -32,6 +33,7 @@ test:
     - git clone https://github.com/JHU-Tools/2DAlphabet.git
     - git clone --branch 102x https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit
     - curl -s https://raw.githubusercontent.com/JHU-Tools/CombineHarvester/master/CombineTools/scripts/sparse-checkout-ssh.sh | bash
+    - scram build --ignore-arch 
     - scram b clean
     - scram b $MAKEFLAGS
     - python -m virtualenv twoD-env
