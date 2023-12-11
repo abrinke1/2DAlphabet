@@ -40,26 +40,31 @@
     "TprimeB-1800_16": {
       "COLOR": 1, 
       "LOC": "test/data/THselection_$process.root:MthvMh_particleNet_$region__nominal", 
+      "NAME": "TprimeB-1800_16", 
       "SCALE": 1.0, 
       "SYSTEMATICS": [
         "lumi", 
         "JER"
       ], 
       "TITLE": "b+T 1800 GeV", 
-      "TYPE": "SIGNAL"
+      "TYPE": "SIGNAL", 
+      "VARIATION": "nominal"
     }, 
     "data_obs": {
       "ALIAS": "Data_16", 
       "COLOR": 1, 
       "LOC": "test/data/THselection_$process.root:MthvMh_particleNet_$region__nominal", 
+      "NAME": "data_obs", 
       "SCALE": 1.0, 
       "SYSTEMATICS": [], 
       "TITLE": "Data", 
-      "TYPE": "DATA"
+      "TYPE": "DATA", 
+      "VARIATION": "nominal"
     }, 
     "ttbar_16": {
       "COLOR": 2, 
       "LOC": "test/data/THselection_$process.root:MthvMh_particleNet_$region__nominal", 
+      "NAME": "ttbar_16", 
       "SCALE": 1.0, 
       "SYSTEMATICS": [
         "lumi", 
@@ -67,7 +72,8 @@
         "TopPtReweight"
       ], 
       "TITLE": "t#bar{t}", 
-      "TYPE": "BKG"
+      "TYPE": "BKG", 
+      "VARIATION": "nominal"
     }
   }, 
   "REGIONS": {
@@ -75,7 +81,8 @@
       "BINNING": "default", 
       "PROCESSES": [
         "ttbar_16", 
-        "TprimeB-1800_16"
+        "TprimeB-1800_16", 
+        "data_obs"
       ]
     }, 
     "CR_pass": {

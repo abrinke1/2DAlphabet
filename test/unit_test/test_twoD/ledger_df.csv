@@ -1,0 +1,21 @@
+,process,region,binning,color,process_type,scale,variation,source_filename,source_histname,alias,title,combine_idx,direction,syst_type,shapes,variation_alias,lnN
+0,ttbar_16,CR_fail,default,2,BKG,1.0,lumi,test/data/THselection_ttbar_16.root,MthvMh_particleNet_CR_fail__nominal,ttbar_16,t#bar{t},,,lnN,,,1.018
+1,ttbar_16,CR_fail,default,2,BKG,1.0,TT_xsec,test/data/THselection_ttbar_16.root,MthvMh_particleNet_CR_fail__nominal,ttbar_16,t#bar{t},,,lnN,,,0.8/1.2
+2,ttbar_16,CR_fail,default,2,BKG,1.0,TopPtReweight,test/data/THselection_ttbar_16.root,MthvMh_particleNet_CR_fail__TptReweight_up,ttbar_16,t#bar{t},,Up,shapes,1.0,TptReweight,
+3,ttbar_16,CR_fail,default,2,BKG,1.0,TopPtReweight,test/data/THselection_ttbar_16.root,MthvMh_particleNet_CR_fail__TptReweight_down,ttbar_16,t#bar{t},,Down,shapes,1.0,TptReweight,
+4,ttbar_16,CR_fail,default,2,BKG,1.0,nominal,test/data/THselection_ttbar_16.root,MthvMh_particleNet_CR_fail__nominal,ttbar_16,t#bar{t},,,,,,
+5,TprimeB-1800_16,CR_fail,default,1,SIGNAL,1.0,lumi,test/data/THselection_TprimeB-1800_16.root,MthvMh_particleNet_CR_fail__nominal,TprimeB-1800_16,b+T 1800 GeV,,,lnN,,,1.018
+6,TprimeB-1800_16,CR_fail,default,1,SIGNAL,1.0,JER,test/data/THselection_TprimeB-1800_16_JER_up.root,MthvMh_particleNet_CR_fail__nominal,TprimeB-1800_16,b+T 1800 GeV,,Up,shapes,1.0,JER,
+7,TprimeB-1800_16,CR_fail,default,1,SIGNAL,1.0,JER,test/data/THselection_TprimeB-1800_16_JER_down.root,MthvMh_particleNet_CR_fail__nominal,TprimeB-1800_16,b+T 1800 GeV,,Down,shapes,1.0,JER,
+8,TprimeB-1800_16,CR_fail,default,1,SIGNAL,1.0,nominal,test/data/THselection_TprimeB-1800_16.root,MthvMh_particleNet_CR_fail__nominal,TprimeB-1800_16,b+T 1800 GeV,,,,,,
+9,data_obs,CR_fail,default,1,DATA,1.0,nominal,test/data/THselection_Data_16.root,MthvMh_particleNet_CR_fail__nominal,Data_16,Data,,,,,,
+10,data_obs,CR_pass,default,1,DATA,1.0,nominal,test/data/THselection_Data_16.root,MthvMh_particleNet_CR_pass__nominal,Data_16,Data,,,,,,
+11,ttbar_16,CR_pass,default,2,BKG,1.0,lumi,test/data/THselection_ttbar_16.root,MthvMh_particleNet_CR_pass__nominal,ttbar_16,t#bar{t},,,lnN,,,1.018
+12,ttbar_16,CR_pass,default,2,BKG,1.0,TT_xsec,test/data/THselection_ttbar_16.root,MthvMh_particleNet_CR_pass__nominal,ttbar_16,t#bar{t},,,lnN,,,0.8/1.2
+13,ttbar_16,CR_pass,default,2,BKG,1.0,TopPtReweight,test/data/THselection_ttbar_16.root,MthvMh_particleNet_CR_pass__TptReweight_up,ttbar_16,t#bar{t},,Up,shapes,1.0,TptReweight,
+14,ttbar_16,CR_pass,default,2,BKG,1.0,TopPtReweight,test/data/THselection_ttbar_16.root,MthvMh_particleNet_CR_pass__TptReweight_down,ttbar_16,t#bar{t},,Down,shapes,1.0,TptReweight,
+15,ttbar_16,CR_pass,default,2,BKG,1.0,nominal,test/data/THselection_ttbar_16.root,MthvMh_particleNet_CR_pass__nominal,ttbar_16,t#bar{t},,,,,,
+16,TprimeB-1800_16,CR_pass,default,1,SIGNAL,1.0,lumi,test/data/THselection_TprimeB-1800_16.root,MthvMh_particleNet_CR_pass__nominal,TprimeB-1800_16,b+T 1800 GeV,,,lnN,,,1.018
+17,TprimeB-1800_16,CR_pass,default,1,SIGNAL,1.0,JER,test/data/THselection_TprimeB-1800_16_JER_up.root,MthvMh_particleNet_CR_pass__nominal,TprimeB-1800_16,b+T 1800 GeV,,Up,shapes,1.0,JER,
+18,TprimeB-1800_16,CR_pass,default,1,SIGNAL,1.0,JER,test/data/THselection_TprimeB-1800_16_JER_down.root,MthvMh_particleNet_CR_pass__nominal,TprimeB-1800_16,b+T 1800 GeV,,Down,shapes,1.0,JER,
+19,TprimeB-1800_16,CR_pass,default,1,SIGNAL,1.0,nominal,test/data/THselection_TprimeB-1800_16.root,MthvMh_particleNet_CR_pass__nominal,TprimeB-1800_16,b+T 1800 GeV,,,,,,

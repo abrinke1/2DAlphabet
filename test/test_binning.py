@@ -135,21 +135,23 @@ def test__histlist_to_binlist():
     assert (histlist_to_binlist('Y',[template]) == [0,2,4,6,8,10,12,14,16,18,20])
 
 def test_SplittingHists():
+    b = Binning('test',basedict,template)
     low = copy_hist_with_new_bins('low','X',filled,[0,2,4,6,8])
     sig = copy_hist_with_new_bins('sig','X',filled,[8,10,12])
     high = copy_hist_with_new_bins('high','X',filled,[12,14,16,18,20,22,24])
-    test = stitch_hists_in_x(filled,[low,sig,high])
+    test = stitch_hists_in_x(name='test', binning=b, histList=[low,sig,high])
     assert(low.GetNbinsX() == 4)
     assert(sig.GetNbinsX() == 2)
     assert(high.GetNbinsX() == 6)
     assert(test.GetNbinsX() == filled.GetNbinsX())
 
 def test_SplittingHists_VALUE():
+    b = Binning('test',basedict,template)
     low = copy_hist_with_new_bins('low','X',filled,[2,4,6])
     sig = copy_hist_with_new_bins('sig','X',filled,[8,10,12])
     high = copy_hist_with_new_bins('high','X',filled,[14,16,18,20])
     with pytest.raises(ValueError):
-        test = stitch_hists_in_x(filled,[low,sig,high])
+        test = stitch_hists_in_x(name='test', binning=b, histList=[low,sig,high])
 
 def test__make_blinded_hist():
     nbins_start = filled.GetNbinsX()

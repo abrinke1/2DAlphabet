@@ -41,6 +41,9 @@ test:
     - source twoD-env/bin/activate
     - cd 2DAlphabet/
     - python setup.py develop
-    - cd ..
+    - pip install -U pytest
+    - ls
+    - pwd
   script:
-    - echo "hello world"
+    - cd test/
+    - python -m pytest

@@ -28,7 +28,7 @@
             "LOC": "path/FILE:HIST"
         },
         "ttbar_16": {
-            "SYSTEMATICS":["lumi","TT_xsec","TptReweight"],
+            "SYSTEMATICS":["lumi","TT_xsec","TopPtReweight"],
             "SCALE": 1.0,
             "COLOR": 2,
             "TYPE": "BKG",
@@ -51,7 +51,7 @@
             "BINNING": "default"
         },
         "CR_fail": {
-            "PROCESSES": ["ttbar_16","TprimeB-1800_16","data_obs"],
+            "PROCESSES": ["ttbar_16","TprimeB-1800_16"],
             "BINNING": "default"
         }
     },
@@ -64,8 +64,8 @@
             "VALUP": 1.20,
             "VALDOWN": 0.8
         },
-        "TptReweight":{
-            "ALIAS": "Top3",
+        "TopPtReweight":{
+            "ALIAS": "TptReweight",
             "UP": "path/FILE:HIST_UP",
             "DOWN": "path/FILE:HIST_DOWN",
             "SIGMA": 1.0
