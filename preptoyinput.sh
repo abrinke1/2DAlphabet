@@ -4,15 +4,14 @@
 # Prepare input ROOT files to be used in generatetoys.sh
 ########################################################
 
-YEAR="2018"
-DATE="2025_06_03"
+DATE="2025_07_14"
 source config/user.config  ## Loads USER, LOC_DIR, and EOS_DIR
-OUTDIR="${EOS_DIR}/raw_inputs/${YEAR}/${DATE}"
+OUTDIR="${EOS_DIR}/raw_inputs/${DATE}"
 
 # Do you want to re-copy input ROOT files to local area?
-FETCH_INPUTS=true # true or false; takes ~3 minutes
+FETCH_INPUTS=false # true or false; takes ~3 minutes
 
-# Do you want to run merge_file_script_mctoy.py (necessary to generate toys)
+# Do you want to run merge_files_mctoy.py (necessary to generate toys)
 MERGE_INPUTS=true # true or false; takes ~13 minutes for standard categories, ~16 for Lep options
 
 # # Are using 2D Alphabet output? (Option from Hichem not currently enabled - AWB 2025.05.16)
@@ -34,39 +33,34 @@ if $FETCH_INPUTS; then
 
     # Copy all 2D plots
     echo " > Copy all input 2D histogram files to raw_inputs ..."
-    # -- Hadronic categories from Siddhesh (gg0l, Vjj, tt0l, Zvv) --
-    echo "Starting hadronic ..."
-    cp -r /eos/cms/store/user/ssawant/htoaa/analysis/20250603_*DatacardsFullSyst/2018/2DAlphabet_inputFiles/* ${OUTDIR}/
-    # -- VBF --
-    echo "Starting VBF ..."
-    mkdir ${OUTDIR}/VBFjj
-    cp /afs/cern.ch/user/m/moanwar/public/2DAlphabet_2018_4June/analyze_htoaa_stage1.root ${OUTDIR}/VBFjj/
-    # -- tt0l (tighter top tagger, separated by AK4 b-tags) --
-    cp -r /eos/cms/store/user/ssawant/htoaa/analysis/20250626_tt0lDatacardsFullSyst/2018/2DAlphabet_inputFiles/* ${OUTDIR}/
+    # # -- Hadronic categories from Siddhesh (gg0l, Vjj, tt0l, Zvv) --
+    # echo "Starting hadronic ..."
+    # cp -r /eos/cms/store/user/ssawant/htoaa/analysis/20250603_*DatacardsFullSyst/2018/2DAlphabet_inputFiles/* ${OUTDIR}/
+    # # -- VBF --
+    # echo "Starting VBF ..."
+    # mkdir ${OUTDIR}/VBFjj
+    # cp /afs/cern.ch/user/m/moanwar/public/2DAlphabet_2018_4June/analyze_htoaa_stage1.root ${OUTDIR}/VBFjj/
+    # # -- tt0l (tighter top tagger, separated by AK4 b-tags) --
+    # cp -r /eos/cms/store/user/ssawant/htoaa/analysis/20250626_tt0lDatacardsFullSyst/2018/2DAlphabet_inputFiles/* ${OUTDIR}/
     # -- Leptonic categories from Hichem (Zll, Wlv, ttlv, ttll) --
     echo "Starting leptonic ..."
-    cp -r /afs/cern.ch/user/h/hboucham/public/2D_Alphabet_Inputs/2D18_2LZ_060325  ${OUTDIR}/Zll
-    cp -r /afs/cern.ch/user/h/hboucham/public/2D_Alphabet_Inputs/2D18_2Ltt_060325 ${OUTDIR}/ttbll
-    for CAT in WlvLo WlvHi ttblv ttbblv; do
-	for WP in WP40 WP60 WP80; do
-	    mkdir -p ${OUTDIR}/${CAT}/${WP}
-	    cp /afs/cern.ch/user/h/hboucham/public/2D_Alphabet_Inputs/2D18_1L_060325/${WP}/${CAT}*root ${OUTDIR}/${CAT}/${WP}/
+    for CAT in Zll WlvLo WlvHi ttblv ttbblv ttbll; do
+	for WP in WP60; do
+	    mkdir -p ${OUTDIR}/${CAT}/${WP}/Run2
+	    for YEAR in 2016pre 2016post 2017 2018; do
+		mkdir -p ${OUTDIR}/${CAT}/${WP}/${YEAR}
+		YEARIN=${YEAR:2:2}  ## Last 2 digits of year
+		if [[ "${YEAR}" == "2016pre" ]]; then
+		    YEARIN="16APV"
+		elif [[ "${YEAR}" == "2016post" ]]; then
+		    YEARIN="16"
+		fi
+		echo "cp /eos/user/h/hboucham/public/2D_Alphabet_Inputs/2D${YEARIN}_*_070125/${WP}/${CAT}_*root ${OUTDIR}/${CAT}/${WP}/${YEAR}/"
+		cp /eos/user/h/hboucham/public/2D_Alphabet_Inputs/2D${YEARIN}_*_070125/${WP}/${CAT}_*root ${OUTDIR}/${CAT}/${WP}/${YEAR}/
+	    done
 	done
     done
 
-    # ## Option from Hichem not currently enabled - AWB 2025.05.16
-    # if [[ "${WORKSPACE}" == "2Dworkspace" ]]
-    # then
-    # 	echo " > Copy all 2DAlphabet output workspace files .. "
-    # 	# -- ggH --
-    # 	cp -r /eos/cms/store/user/ssawant/htoaa/analysis/20250502_gg0l_FullSyst/2018/2DAlphabet_fits_pseudodata raw_inputs/2D_out_gg0l_2025_05_07
-    # 	# -- VBF --
-    # 	cp -r /afs/cern.ch/user/m/moanwar/public/forYihui/taggerv2_wp40Andwp60 raw_inputs/2D_out_VBFjj_2025_03_12
-    # 	# -- Leptonic --
-    # 	cp -r /afs/cern.ch/user/h/hboucham/public/2D_Alphabet_Outputs/2D_Limits_040125 raw_inputs/2D_out_Lep_2025_04_01
-    # fi
-
-    # Calculate elapsed time 
     ELAPSED=$((SECONDS - START_TIME))
     hours=$((ELAPSED / 3600))
     minutes=$(((ELAPSED % 3600) / 60))
@@ -78,32 +72,51 @@ fi ## End conditional: if $FETCH_INPUTS
 
 if $MERGE_INPUTS; then
     # Prepare inputs
-    echo " > Merging categories (LepHi, LepLo, LepIncl, gg0lIncl, VBFjjIncl, VjjIncl, tt0l)"
-    for CAT in LepLo LepHi LepHiT gg0lV VVBFjj HadXLo LepIncl gg0lIncl VBFjjIncl VjjIncl tt0lIncl; do
-    	## Producing "Incl" categories also produces Hi/Lo plots
-    	echo " > python3 merge_file_script_mctoy.py ${CAT}"
-    	python3 merge_file_script_mctoy.py ${CAT}
-	echo " > Done with python3 merge_file_script_mctoy.py ${CAT}"
-    done
+    # echo " > Merging categories (LepLo LepHi LepHiT gg0lV VVBFjj HadXLo LepIncl gg0lIncl VBFjjIncl VjjIncl tt0lIncl)"
+    # for CAT in LepLo LepHi LepHiT gg0lV VVBFjj HadXLo LepIncl gg0lIncl VBFjjIncl VjjIncl tt0lIncl; do
+    # 	for YEAR in 2016pre 2016post 2017 2018; do
+    # 	    ## Producing "Incl" categories also produces Hi/Lo plots
+    # 	    echo " > python3 merge_files_mctoy.py ${CAT} ${YEAR}"
+    # 	    python3 merge_files_mctoy.py ${CAT} ${YEAR}
+    # 	    echo " > Done with python3 merge_files_mctoy.py ${CAT} ${YEAR}"
+    # 	done
+    # done
 
-    # Calculate elapsed time 
-    ELAPSED=$((SECONDS - START_TIME))
-    hours=$((ELAPSED / 3600))
-    minutes=$(((ELAPSED % 3600) / 60))
-    seconds=$((ELAPSED % 60))
-    echo "Time to merge standard categories: $hours hour(s), $minutes minute(s), $seconds second(s)"
+    # ELAPSED=$((SECONDS - START_TIME))
+    # hours=$((ELAPSED / 3600))
+    # minutes=$(((ELAPSED % 3600) / 60))
+    # seconds=$((ELAPSED % 60))
+    # echo "Time to merge standard categories: $hours hour(s), $minutes minute(s), $seconds second(s)"
 
     # ## Optional for optimization studies, disabled by default
     # echo " > Merging modified LepHi and LepLo categories (A - H)"
     # for mod in A B C D E F G H; do
-    # 	echo " > python3 merge_file_script_mctoy.py LepLo${mod}"
-    # 	python3 merge_file_script_mctoy.py LepLo${mod}
-    # 	echo " > python3 merge_file_script_mctoy.py LepHi${mod}"
-    # 	python3 merge_file_script_mctoy.py LepHi${mod}
+    # 	for YEAR in 2016pre 2016post 2017 2018; do
+    # 	    echo " > python3 merge_files_mctoy.py LepLo${mod} ${YEAR}"
+    # 	    python3 merge_files_mctoy.py LepLo${mod} ${YEAR}
+    # 	    echo " > python3 merge_files_mctoy.py LepHi${mod} ${YEAR}"
+    # 	    python3 merge_files_mctoy.py LepHi${mod} ${YEAR}
+    # 	done
     # done
+
+    echo " > Merging LepHiG and LepLoH (no Zvv)"
+    for CAT in LepHiG LepLoH; do
+	for YEAR in 2016pre 2016post 2017 2018; do
+	    echo " > python3 merge_files_mctoy.py ${CAT} ${YEAR}"
+	    python3 merge_files_mctoy.py ${CAT} ${YEAR}
+	done
+    done
+
+    ELAPSED=$((SECONDS - START_TIME))
+    hours=$((ELAPSED / 3600))
+    minutes=$(((ELAPSED % 3600) / 60))
+    seconds=$((ELAPSED % 60))
+    echo "Time for all category merging: $hours hour(s), $minutes minute(s), $seconds second(s)"
+
+    python3 merge_years_mctoy.py ${CAT}
+
 fi  ## End conditional: if $MERGE_INPUTS
 
-# Calculate elapsed time 
 ELAPSED=$((SECONDS - START_TIME))
 hours=$((ELAPSED / 3600))
 minutes=$(((ELAPSED % 3600) / 60))
