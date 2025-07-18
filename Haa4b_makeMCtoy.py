@@ -46,7 +46,7 @@ if not (doToysMC or doToysData or TOYSOURCE == 'None'):
     sys.exit()
 ## Check for output directory
 if not os.path.exists(PLOT_DIR_IN):
-    print('\n\nHaa4b_makeMCtoy.py error! '+PLOT_DIR_IN+' does not exist. Run merge_file_script_mctoy.py first.\n')
+    print('\n\nHaa4b_makeMCtoy.py error! '+PLOT_DIR_IN+' does not exist. Run merge_files_mctoy.py first.\n')
     sys.exit()
 ## Make sub-directories for output toy ROOT and JSON files
 if not os.path.exists(PLOT_DIR+'/toys'):

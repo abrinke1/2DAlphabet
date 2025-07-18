@@ -45,7 +45,7 @@ python setup.py develop
 ./config/user.sh
 ## Fetch data and MC files with 2DAlphabet input, merge categories
 ## 3 minutes to fetch files, 13 to merge standard categories, 16 for alternate Lep categories
-## Can adjust loops with merge_file_script_mctoy.py to run over just a few categories
+## Can adjust loops with merge_files_mctoy.py to run over just a few categories
 ./preptoyinput.sh
 ## Generate toys from smoothed data and MC, including background-only and signal-injected
 ## Can adjust number of toys (NTOYS) and list of categories (CATS) in generatetoys.sh
