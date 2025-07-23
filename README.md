@@ -43,10 +43,17 @@ python setup.py develop
 ```
 ## Setup config/user.config file with EOS output directory
 ./config/user.sh
-## Fetch data and MC files with 2DAlphabet input, merge categories
-## 3 minutes to fetch files, 13 to merge standard categories, 16 for alternate Lep categories
-## Can adjust loops with merge_files_mctoy.py to run over just a few categories
-./preptoyinput.sh
+## Fetch data and MC files with 2DAlphabet input (~5 minutes)
+./fetchtoyinput.sh
+## Merge histograms into categories, including merging systematics
+## Takes 20 - 30 minutes per category per year, so adjust "for YEAR in XXXX"
+##   loop to contain a single year, then run 4 years in 4 separate lxplus sessions
+## Takes ~1.5 hours; could run separate categories in separate sessions as well,
+##   or run merge_files_mctoy.py with "&" at the end to run in the background
+## In any case, need to make sure all merging is done before running merge_years_mctoy.py
+./mergetoyinput.sh
+## Merge 4 eras into Run2 (5 - 10 minutes for 5 standard categories)
+python3 merge_years_mctoy.py
 ## Generate toys from smoothed data and MC, including background-only and signal-injected
 ## Can adjust number of toys (NTOYS) and list of categories (CATS) in generatetoys.sh
 ## Can adjust choice of mass regressors (MHREG, MAREG) and signal injection (SIGINJ) in Haa4b_makeMCtoy.py
