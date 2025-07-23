@@ -36,9 +36,9 @@ if SIGINJ.startswith('mA_'):
     MASSA = SIGINJ[3:5]
     assert MASSA in MASSESA, '\nERROR!!! Invalid mass %s from %s. Quitting.' % (MASSA, SIGINJ)
     MASSESA = [MASSA]
-YEAR    = '2018'    ## Data year
-DATE    = '2025_06_03'
-PATH    = EOS_DIR+'/plots/'+YEAR+'/'+DATE+'/'+CAT
+YEAR    = 'Run2'    ## Data year
+DATE    = '2025_07_14'
+PATH    = EOS_DIR+'/plots/'+DATE+'/'+CAT+'/'+YEAR
 UseMCToy   = (TOYSOURCE == 'MC')
 UseDataToy = (TOYSOURCE == 'Data')
 UseDataObs = (TOYSOURCE == 'Data' and ITOY < 0)
@@ -161,10 +161,10 @@ def _working_json():
     toy_str = ''
     if UseMCToy:
         toy_str = ('_MCtoy%d.json' % ITOY) if ITOY >= 0 else '_MCrounded.json'
-        working_json = 'jsons/toys/'+YEAR+'/'+DATE+'/'+CAT+'/'+base_json[6:].replace('_Data.json', toy_str)
+        working_json = 'jsons/toys/'+DATE+'/'+CAT+'/'+YEAR+'/'+base_json[6:].replace('_Data.json', toy_str)
     if UseDataToy:
         toy_str = ('_Datatoy%d.json' % ITOY) if ITOY >= 0 else ('_Data.json' if ITOY == -2 else '_Datarounded.json')
-        working_json = 'jsons/toys/'+YEAR+'/'+DATE+'/'+CAT+'/'+base_json[6:].replace('_Data.json', toy_str)
+        working_json = 'jsons/toys/'+DATE+'/'+CAT+'/'+YEAR+'/'+base_json[6:].replace('_Data.json', toy_str)
     if SIGINJ.startswith('mA_') and '_sigBr_' in SIGINJ:
         working_json = working_json.replace('.json', '_'+SIGINJ+'.json')
     working_json = working_json.replace('.json', '_%s_%s.json' % (MHREG, MAREG))
