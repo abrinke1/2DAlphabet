@@ -67,7 +67,7 @@ python3 Haa4b_makeMCtoy.py CAT NTOYS SOURCE
 ## Outputs to output/MCtoys/Mergecards or output/Datatoys/Mergecards
 ## If toy index >= 0, outputs to EOS directory
 ## ./run_toy.sh [toy index] [Data or MC] [Category] [signal mA] [fit] [signal injection]
-./run_toy.sh -1 MC gg0lV 12 2s2C false
+./run_toy.sh -1 MC LepHiT 55 1x1C false
 ## Create 2DAlphabet workspaces and run fits for many toys
 ## First adjust FIT, and iCat and iDM and iMA and SINJ loops as desired
 ## First run mA=12 jobs to create workspaces; when these are done can run all other mass points
