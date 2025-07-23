@@ -15,8 +15,10 @@ R.gStyle.SetOptStat(0)  ## Don't display stat boxes
 VERBOSE = False
 VVERBOSE = False
 DATE  = '2025_07_14'
-YEARS = ['2016pre','2016post','2017','2018']
+YEARS = ['2016preVFP','2016postVFP','2017','2018']
 YRX = YEARS[-1]
+#CATS = []  ## If empty, merge all categories
+CATS = ['LepHiT','LepLo','HadXLo','gg0lIncl']
 
 eos_from_config = [eos for eos in (open('config/user.config','r')).readlines() if eos.startswith('EOS_DIR=')]
 EOS_DIR = eos_from_config[0].replace('EOS_DIR=','').replace('\n','')
@@ -35,10 +37,17 @@ def main():
     for top_dir in [IN_DIR_A, IN_DIR_B]:
         print('\n\n*** Merging categories in %s ***' % top_dir)
         for o_dir in [top_dir+sub_dir for sub_dir in os.listdir(top_dir)]:
-            ## Raw input files have WP sub-directory
-            ## Also, for Hichem's files, 2016 used instead of 2016pre or 2016post in file and histogram names
+            #do_merge = (len(CATS) == 0)
+            do_merge = True
+            for cat in CATS:
+                if cat in o_dir.replace(top_dir,''):
+                    #do_merge = True
+                    do_merge = False
+            if not do_merge:
+                continue
             RAW_IN = ('/raw_inputs/' in o_dir and not '2D_in_merged_' in o_dir)
-            if RAW_IN:
+            ## Raw input files in leptonic categories have X4b WP sub-directory
+            if RAW_IN and ('/Zll' in o_dir or '/Wlv' in o_dir or '/ttb' in o_dir):
                 WP = '/WP40' if ('gg0l' in o_dir or 'VBF' in o_dir) else '/WP60'
                 o_dir = o_dir+WP
             o_dir = o_dir+'/Run2/'
@@ -54,7 +63,7 @@ def main():
                 f_list[yr] = [in_dir+fl for fl in os.listdir(in_dir) if fl.endswith('.root')]
             for yrA in YEARS:
                 for yrB in YEARS:
-                    assert len(f_list[yrA]) == len(f_list[yrB]), '%s has %d files, %s has %d files! (%s and %s)' % (yrA, len(f_list[yrA]), yrB, len(f_list[yrB]), OUT_DIRS[cat].replace('Run2',yrA), OUT_DIRS[cat].replace('Run2',yrB))
+                    assert len(f_list[yrA]) == len(f_list[yrB]), '%s has %d files, %s has %d files! (%s vs. %s)' % (yrA, len(f_list[yrA]), yrB, len(f_list[yrB]), f_list[yrA][0], f_list[yrB][0])
             f_list['Run2'] = [fl.replace(YRX,'Run2') for fl in f_list[YRX]]
             if VERBOSE: print('  * Found %d files' % len(f_list['Run2']))
 
@@ -65,20 +74,20 @@ def main():
                 hn_ins = {}
                 ## Get list of histograms for each year, and confirm there is the same number
                 for yr in YEARS:
-                    fn_in = fn_out.replace('/Run2/', '/'+yr+'/')
-                    if RAW_IN:
-                        fn_in = fn_in.replace('Run2.root', yr[0:4]+'.root')
-                    else:
-                        fn_in = fn_in.replace('Run2.root', yr+'.root')
+                    fn_in = fn_out.replace('/Run2/', '/'+yr+'/').replace('Run2.root', yr+'.root')
                     f_ins[yr] = R.TFile(fn_in, 'open')
                     hn_ins[yr] = {}
                     hn_ins[yr]['Nom'],hn_ins[yr]['Sys'],hn_ins[yr]['SysYr'] = [],[],[]
-                    for hn_in in [key.GetName() for key in f_ins[yr].GetListOfKeys()]:
+                    hn_in_list = []
+                    for key in f_ins[yr].GetListOfKeys():
+                        if not key.GetName() in hn_in_list:
+                            hn_in_list.append(key.GetName())
+                    for hn_in in hn_in_list:
                         if hn_in.endswith('_Nom'):
                             hn_ins[yr]['Nom'].append(hn_in)
                     ## Only include systematics for signal MC
                     if 'Htoaato4b' in fn_in:
-                        for hn_in in [key.GetName() for key in f_ins[yr].GetListOfKeys()]:
+                        for hn_in in hn_in_list:
                             if hn_in.endswith('_Nom'): continue
                             ## Check that base histogram name exists in nominal form
                             for pf in ['Pass','Fail']:
@@ -100,6 +109,9 @@ def main():
                     for yrB in YEARS:
                         for suff in ['Nom','Sys']:
                             if len(hn_ins[yrA][suff]) != len(hn_ins[yrB][suff]):
+                                print(hn_ins[yrA][suff])
+                                print('***************')
+                                print(hn_ins[yrB][suff])
                                 assert False, '%s has %d %s hists, %s has %d!' % (fn_out.replace('Run2',yrA), len(hn_ins[yrA][suff]), suff, fn_out.replace('Run2',yrB), len(hn_ins[yrB][suff]))
 
                 ## Create output file and fill with summed histograms from each year
@@ -117,8 +129,6 @@ def main():
                         assert False, 'Could not find %s in %s' % (hn_in, f_ins[YRX].GetName())
                     for yr in YEARS[0:-1]:
                         hn_in_yr = hn_in.replace(YRX,yr)
-                        if RAW_IN:
-                            hn_in_yr = hn_in.replace(YRX,yr[0:4])
                         try:
                             h_out.Add(f_ins[yr].Get(hn_in_yr))
                         except:
@@ -138,10 +148,8 @@ def main():
                             assert hn_pref+'_'+pf+'_Nom' in hn_ins[yr]['Nom'],  hn_pref+'_'+pf+'_Nom not found in '+f_ins[yr].GetName()
                             hn_suff = hn_in.replace(hn_pref+'_'+pf,'')
                             hn_pref = hn_pref.replace('_'+yr+'_','_Run2_')
-                            if RAW_IN:
-                                hn_pref = hn_pref.replace('_'+yr[0:4]+'_','_Run2_')
                             hn_out = hn_pref+'_'+pf+hn_suff
-                            assert '_Run2_' in hn_out, '%s failed to replace %s or %s, got %s' % (hn_in, yr, yr[0:4], hn_out)
+                            assert '_Run2_' in hn_out, '%s failed to replace %s, got %s' % (hn_in, yr, hn_out)
                             try:
                                 h_out = f_ins[yr].Get(hn_in).Clone(hn_out)
                             except:
@@ -149,8 +157,6 @@ def main():
                             for yrB in YEARS:
                                 if yrB == yr: continue
                                 hn_inB = hn_out.replace(hn_suff,'').replace('_Run2_','_'+yrB+'_')
-                                if RAW_IN:
-                                    hn_inB = hn_out.replace(hn_suff,'').replace('_Run2_','_'+yrB[0:4]+'_')
                                 hn_inB = hn_inB+'_Nom'
                                 try:
                                     h_out.Add(f_ins[yrB].Get(hn_inB))
