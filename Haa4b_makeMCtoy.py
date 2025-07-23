@@ -28,13 +28,13 @@ for mA in MASSESA:  ## Signal to inject, in 1/1000ths
     if   int(mA) <= 20: SIGINJ[mA] = [20]  ## [5, 10, 20, 50]
     elif int(mA) <= 40: SIGINJ[mA] = [50]  ## [10, 20, 50, 100]
     else:               SIGINJ[mA] = [100] ## [10, 20, 50, 100, 200]
-YEAR = '2018'
-DATE = '2025_06_03'
+YEAR = 'Run2'
+DATE = '2025_07_14'
 eos_from_config = [eos for eos in (open('config/user.config','r')).readlines() if eos.startswith('EOS_DIR=')]
 EOS_DIR = eos_from_config[0].replace('EOS_DIR=','').replace('\n','')
-PLOT_DIR_IN = EOS_DIR+'/plots/'+YEAR+'/'+DATE+'/'+CAT
+PLOT_DIR_IN = EOS_DIR+'/plots/'+DATE+'/'+CAT+'/'+YEAR
 PLOT_DIR = PLOT_DIR_IN+('_test' if TEST else '')
-JSON_DIR = 'jsons/toys/'+YEAR+'/'+DATE+'/'+CAT+('_test' if TEST else '')
+JSON_DIR = 'jsons/toys/'+DATE+'/'+CAT+'/'+YEAR+('_test' if TEST else '')
 DMs = ['Data','MC']
 PFs = ['Pass','Fail']
 
@@ -428,8 +428,10 @@ samps = ['Data']
 sigs = None
 if CAT.startswith('Had') or CAT.startswith('gg0l') or ('VBFjj' in CAT) or CAT.startswith('Vjj') or CAT.startswith('tt0l'):
     ## Background MC already summed ('MC') for all categories except VBFjj, which has manual summing ('SumMC')
-    samps.append('SumMC' if (('VBFjj' in CAT) or (CAT == 'gg0lV')) else 'MC')
-    sigs = ['ggH','VBFH','WH','ZH','ttH','SumH']
+    #samps.append('SumMC' if (('VBFjj' in CAT) or (CAT == 'gg0lV')) else 'MC')
+    samps.append('MC')  ## TODO : SumMC files empty for some reason - AWB 2025.07.22
+    #sigs = ['ggH','VBFH','WH','ZH','ttH','SumH']
+    sigs = ['ggH','VBFH','WH','ZH','ttH']  ## TODO : SumH histograms problematic for some reason - AWB 2025.07.22
     for sig in sigs:
         for mA in MASSESA:
             samps.append(sig+'toaato4b_mA_'+str(mA))
@@ -442,8 +444,10 @@ elif CAT.startswith('Lep'):
     else:
         assert False, '\nInvalid CAT = %s!!! Quitting.' % CAT
     ## Use manual summing ('SumMC') instead of original sum ('MC') in order to drop QCD from Zvv background model
-    samps.append('SumMC')
-    sigs = ['WH','ZH','ttH','SumH']
+    #samps.append('SumMC')
+    samps.append('MC')  ## TODO : SumMC files empty for some reason - AWB 2025.07.22
+    #sigs = ['WH','ZH','ttH','SumH']
+    sigs = ['WH','ZH','ttH']  ## TODO : SumH histograms problematic for some reason - AWB 2025.07.22
     for sig in sigs:
         for mA in MASSESA:
             samps.append(sig+'toaato4b_mA_'+str(mA))
@@ -454,7 +458,7 @@ else:
 print('\nIn Haa4b_makeMCtoy.py, looking for the following samples:')
 print(samps)
 
-base_pth_in = '%s/raw_inputs/%s/%s/2D_in_merged_%s/' % (EOS_DIR, YEAR, DATE, superCat)
+base_pth_in = '%s/raw_inputs/%s/2D_in_merged_%s/%s/' % (EOS_DIR, DATE, superCat, YEAR)
 
 # step 1, merge bkg MC, set bin errors based on effective yields
 h_orig,h_sig = {},{}
