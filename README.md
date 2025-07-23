@@ -45,6 +45,8 @@ python setup.py develop
 ./config/user.sh
 ## Fetch data and MC files with 2DAlphabet input (~5 minutes)
 ./fetchtoyinput.sh
+## Temporary hack to fix missing VBFHtoaato4b_mA_55 files in 2016postVFP
+python3 macros/duplicate_files.py
 ## Merge histograms into categories, including merging systematics
 ## Takes 20 - 30 minutes per category per year, so adjust "for YEAR in XXXX"
 ##   loop to contain a single year, then run 4 years in 4 separate lxplus sessions
