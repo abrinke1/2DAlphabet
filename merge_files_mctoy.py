@@ -15,7 +15,7 @@ R.gStyle.SetOptStat(0)  ## Don't display stat boxes
 
 ## User configuration
 VERBOSE  = False
-PRINTONLY = False
+PRINTONLY = True
 HADSIGS  = ['ggH', 'VBFH', 'WH', 'ZH', 'ttH']
 LEPSIGS  = ['WH', 'ZH', 'ttH']
 MASSESA  = ['12']+[str(mA*5) for mA in range(3,13)]
@@ -24,15 +24,18 @@ MASSESA  = ['12']+[str(mA*5) for mA in range(3,13)]
 MHREGS   = ['pnet']
 MAREGS   = ['34a']
 DATE     = '2025_07_14'
-LUMIS    = {'2016pre': 19.52, '2016post': 16.81, '2017': 41.48, '2018': 59.83}
+LUMIS    = {'2016preVFP': 19.52, '2016postVFP': 16.81, '2017': 41.48, '2018': 59.83}
 eos_from_config = [eos for eos in (open('config/user.config','r')).readlines() if eos.startswith('EOS_DIR=')]
 EOS_DIR = eos_from_config[0].replace('EOS_DIR=','').replace('\n','')
 
 CATS_IN = {}
 CAT_OUT = sys.argv[1]  ## gg0lIncl, LepHi, LepLo, etc.
-YEAR    = sys.argv[2]  ## 2016pre, 2016post, 2017, 2018
+YEAR    = sys.argv[2]  ## 2016preVFP, 2016postVFP, 2017, 2018
 CAT_INS = [CAT_OUT]
 IN_DIR = EOS_DIR+'/raw_inputs/%s/' % DATE
+if not os.path.exists('logs'):
+    os.system('mkdir logs')
+
 
 IS_HAD,IS_LEP = False,False
 for pref in ['Had','gg0l','VBFjj','Vjj','VVBFjj','tt0l']:
@@ -105,7 +108,7 @@ elif IS_LEP:
         elif cat.startswith('Wlv') or (cat.startswith('tt') and cat.endswith('lv')):
             CATS_IN[cat]['bkgs'] = ['Zll','ZZ','TT2l','STop_tW_12l','STbar_tW_12l','Wlv','TT1l','ST_s_1l','STop_t','STbar_t','QCD','MC']
         elif cat.startswith('Zvv'):
-            CATS_IN[cat]['bkgs'] = ['Wqq','Zqq','TT0l','TT1l','Zvv','Zll','Wlv','ST_s_1l','STop_t','STbar_t','STop_tW_12l','STbar_tW_12l','WW','WZ','ZZ','MC']
+            CATS_IN[cat]['bkgs'] = ['Wqq','Zqq','TT0l','TT1l','Zvv','Zll','Wlv','ST_s_1l','STop_t','STbar_t','STop_tW_Incl','STbar_tW_Incl','WW','WZ','ZZ','MC']
         elif cat == 'tt0l1b':
             CATS_IN[cat]['bkgs'] = ['Wqq','Zqq','TT0l','TT1l']  ## Drop QCD, thus don't use existing 'MC'
         else:
@@ -132,6 +135,28 @@ for cat in [CAT_OUT]+CAT_INS:
         WP_CUTS[cat] = ['WP60']  ## Default WP for most categories
 
 
+def check_binning(h1, h2):
+    nX1 = h1.GetNbinsX()
+    nY1 = h1.GetNbinsY()
+    nX2 = h2.GetNbinsX()
+    nY2 = h2.GetNbinsY()
+    xL1 = h1.GetXaxis().GetBinLowEdge(1)
+    xH1 = h1.GetXaxis().GetBinLowEdge(nX1+1)
+    yL1 = h1.GetYaxis().GetBinLowEdge(1)
+    yH1 = h1.GetYaxis().GetBinLowEdge(nY1+1)
+    xL2 = h2.GetXaxis().GetBinLowEdge(1)
+    xH2 = h2.GetXaxis().GetBinLowEdge(nX2+1)
+    yL2 = h2.GetYaxis().GetBinLowEdge(1)
+    yH2 = h2.GetYaxis().GetBinLowEdge(nY2+1)
+    if (nX1 != nX2 or nY1 != nY2 or xL1 != xL2 or xH1 != xH2 or yL1 != yL2 or yH1 != yH2):
+        print('\nMAJOR ERROR!!! %s is %d x %d, %s is %d x %d' % (h1.GetName(), nX1, nY1,
+                                                                 h2.GetName(), nX2, nY2))
+        print('Spanning [%.1f-%.1f] x [%.1f-%.1f] vs. [%.1f-%.1f] x [%.1f-%.1f]' % (xL1, xH1, yL1, yH1,
+                                                                                    xL2, xH2, yL2, yH2))
+        sys.exit()
+## End function: check_binning(h1, h2)
+
+
 def main():
 
     print('\nInside merge_files_mctoy\n')
@@ -151,6 +176,7 @@ def main():
 
     h_outs = {}  ## Save summed output histograms
     h_ins  = {}  ## Also save the inputs (keeps naming scheme consistent)
+    all_systs = {}  ## Full list of systematics across all categories, by sample
     for cat in CAT_INS:
         if PRINTONLY: print('\n\n******* Category %s *******\n' % cat)
         ## Save quantities for S/B and S/sqrt(B) estimates
@@ -170,13 +196,15 @@ def main():
             samp = sampIn
             if cat.startswith('VBFjj') and sampIn.startswith('JetHT'):
                 samp = 'Data'
+            if not samp in all_systs.keys():
+                all_systs[samp] = []
             for wp in WP_CUTS[cat]:
                 if cat.startswith('VBFjj'):
                     in_file_str = CATS_IN[cat]['dir']+'/analyze_htoaa_stage1.root'
                 elif IS_LEP and not cat.startswith('Zvv') and not cat.startswith('tt0l'):
-                    in_file_str = CATS_IN[cat]['dir']+'/%s/%s/%s_%s_%s.root' % (wp, YEAR, cat, samp, YEAR[0:4])
+                    in_file_str = CATS_IN[cat]['dir']+'/%s/%s/%s_%s_%s.root' % (wp, YEAR, cat, samp, YEAR)
                 else:
-                    in_file_str = CATS_IN[cat]['dir']+'/%s_%s_%s.root' % (cat, samp, YEAR)
+                    in_file_str = CATS_IN[cat]['dir']+'/%s/%s_%s_%s.root' % (YEAR, cat, samp, YEAR)
                 in_file = None
                 in_hists = []
                 in_systs = ['Nom']
@@ -185,24 +213,47 @@ def main():
                     if VERBOSE or (samp == 'Data' and not PRINTONLY):
                         print('\n*******\nReading from %s' % in_file_str)
                     in_file = R.TFile(in_file_str, 'open')
-                    in_hists_all = [key.GetName() for key in in_file.GetListOfKeys()]
+                    in_hists_all = []
+                    for key in in_file.GetListOfKeys():
+                        if not key.GetName() in in_hists_all:
+                            in_hists_all.append(key.GetName())
+                    if len(in_hists_all) == 0:
+                        print('*** WEIRD ERROR!!! %s has no histograms! Skipping. ***' % in_file_str)
+                        continue
                     in_hists = [hst.replace('_Nom','') for hst in in_hists_all if hst.endswith('_Nom')]
                     in_systs = [hst.replace(in_hists[0]+'_','') for hst in in_hists_all if hst.startswith(in_hists[0])]
+                    in_systs = sorted(in_systs, key=str.casefold)
+                    in_systs.insert(0, in_systs.pop(in_systs.index('Nom')))
                     if VERBOSE:
                         print('  * %d histograms, %d systematic variations' % (len(in_hists), len(in_systs)))
                         if not 'Htoaato4b' in samp:
                             print('    (Only using nominal distribution for non-signal)')
                     if not 'Htoaato4b' in samp:
                         in_systs = ['Nom']
+                    else:
+                        with open('logs/systs_%s_%s_%s_%s.txt' % (cat, samp, wp, YEAR), 'w') as fsyst:
+                            for syst in in_systs:
+                                fsyst.write(syst+'\n')
+                    all_systs[samp] = all_systs[samp]+[syst for syst in in_systs if not syst in all_systs[samp]]
+                    all_systs[samp] = sorted(all_systs[samp], key= str.casefold)
+                    all_systs[samp].insert(0, all_systs[samp].pop(all_systs[samp].index('Nom')))
+                ## End conditional: if not samp.startswith('Sum')
 
                 for mHr in MHREGS:
                     if PRINTONLY and mHr != 'pnet': continue
                     for mAr in MAREGS:
                         if PRINTONLY and mAr != '34a': continue
                         for pf in ['Pass', 'Fail']:
+                            h_out_nom = None  ## Already-summed nominal histogram (for new systematics)
+                            firstHist = True  ## Bool to track if first output hist needs to be created
                             for syst in in_systs:
-                                h_in_name_read  = '%s_%s_%s_%s_%s_%s_%s_%s' % (cat, samp, YEAR[0:4], mHr, mAr, wp, pf, syst)
-                                h_in_name_write = '%s_%s_%s_%s_%s_%s_%s_%s' % (cat, samp, YEAR, mHr, mAr, wp, pf, syst)
+                                h_in_name_read  = '%s_%s_%s_%s_%s_%s_%s_%s' % (cat, samp, YEAR, mHr, mAr, wp, pf, syst)
+                                h_in_name_write = h_in_name_read
+                                h_out_base = '%s_%s_%s_%s_%s_%s_%s' % (CAT_OUT, samp, YEAR, mHr, mAr, wp, pf)
+                                h_out_name = h_out_base+'_'+syst
+                                if syst == 'Nom' and h_out_name in h_outs.keys():
+                                    firstHist = False
+                                    h_out_nom = h_outs[h_out_name].Clone('h_out_nom')
                                 ## No real VjjHi WP40; use WP60 to add to VBFjjHi WP40 in VVBFjj
                                 if wp == 'WP40' and cat == 'VjjHi':
                                     h_in_name_read = h_in_name_read.replace('_'+wp+'_', '_WP60_')
@@ -228,7 +279,11 @@ def main():
                                     xSig = CATS_IN[cat]['sigs'][0]  ## First signal component
                                     h_in = h_ins[h_in_name_write.replace('SumHtoaato4b',xSig)].Clone('SumHtoaato4b')
                                     for iSig in CATS_IN[cat]['sigs'][1:]:
-                                        h_in.Add(h_ins[h_in_name_write.replace('SumHtoaato4b',iSig)])
+                                        h_in_name_iSig = h_in_name_write.replace('SumHtoaato4b',iSig)
+                                        if h_in_name_iSig in h_ins.keys():
+                                            h_in.Add(h_ins[h_in_name_iSig])
+                                        else:
+                                            print('*** WEIRD ERROR!!! %s histogram missing! Skipping. ***' % h_in_name_iSig)
                                 else: ## Standard behavior: get histogram from input file
                                     if VERBOSE: print('\nGetting histogram %s' % h_in_name_read)
                                     h_in = in_file.Get(h_in_name_read)
@@ -241,20 +296,20 @@ def main():
                                         if VERBOSE or (sampIn == samps[0] and wp == WP_CUTS[cat][0] and pf == 'Pass'):
                                             print('\nRebinning y-axis by %d\n' % int(1 / h_in.GetYaxis().GetBinWidth(1)))
                                         h_in.Rebin2D(int(1 / h_in.GetYaxis().GetBinWidth(1)), 1)
-                                    if VERBOSE: print('  * Integral = %.1f' % h_in.Integral())
+                                    if VERBOSE: print('  * Integral = %.2f' % h_in.Integral())
                                     if cat == 'VBFjjHi' and samp == 'QCD_bEnr' and YEAR == '2018' and wp == 'WP60' and pf == 'Pass':
                                         if h_in.GetMaximum() > 0.05*h_in.Integral():
                                             print('\n\n\n***** ONE MANUAL ADJUSTMENT!!! *****')
-                                            print('%s has max %.1f, integral %.1f (%.1f%%)' % (h_in.GetName(), h_in.GetMaximum(), h_in.Integral(), 100*h_in.GetMaximum()/h_in.Integral()))
+                                            print('%s has max %.2f, integral %.2f (%.2f%%)' % (h_in_name_read, h_in.GetMaximum(), h_in.Integral(), 100*h_in.GetMaximum()/h_in.Integral()))
                                             foundBin = False
                                             for iX in range(1, h_in.GetNbinsX()+1):
                                                 if foundBin: break
                                                 for iY in range(1, h_in.GetNbinsY()+1):
                                                     if h_in.GetBinContent(iX,iY) != h_in.GetMaximum():
                                                         continue
-                                                    print('Bin (%d,%d) = %.1f +/- %.1f' % (iX, iY, h_in.GetBinContent(iX,iY), h_in.GetBinError(iX,iY)))
+                                                    print('Bin (%d,%d) = %.2f +/- %.2f' % (iX, iY, h_in.GetBinContent(iX,iY), h_in.GetBinError(iX,iY)))
 
-                                                    print('7x7 surrounding integral is %.1f' % h_in.Integral(iX-3,iX+3,iY-3,iY+3))
+                                                    print('7x7 surrounding integral is %.2f' % h_in.Integral(iX-3,iX+3,iY-3,iY+3))
                                                     print('Setting (%d,%d) to %.2f' % (iX, iY, ((h_in.Integral(iX-3,iX+3,iY-3,iY+3) - h_in.GetMaximum()) / 48.)))
                                                     h_in.SetBinContent(iX,iY, ((h_in.Integral(iX-3,iX+3,iY-3,iY+3) - h_in.GetMaximum()) / 48.))
                                                     h_in.SetBinError(iX,iY, ((h_in.Integral(iX-3,iX+3,iY-3,iY+3) - h_in.GetMaximum()) / 48.))
@@ -268,7 +323,6 @@ def main():
 
                                 wp_out = 'WP4060' if (CAT_OUT == 'VVBFjj' and wp == 'WP40') else wp
                                 assert (wp_out in WP_CUTS[CAT_OUT]), '\nERROR!!! %s wp = %s, wp_out = %s, not in WP_CUTS[%s]. Quitting.' % (cat, wp, wp_out, CAT_OUT)
-                                h_out_name = '%s_%s_%s_%s_%s_%s_%s_%s' % (CAT_OUT, samp, YEAR, mHr, mAr, wp_out, pf, syst)
                                 if not (h_in_name_write in h_ins.keys()):
                                     h_ins[h_in_name_write] = h_in.Clone(h_in_name_write)
                                     if VERBOSE: print('Cloned %s into %s' % (h_in_name_read, h_ins[h_in_name_write].GetName()))
@@ -277,39 +331,42 @@ def main():
                                     if VERBOSE: print('Added %s into %s' % (h_in_name_read, h_ins[h_in_name_write].GetName()))
                                 else:
                                     assert False, '\nERROR!!! Trying to add %s to existing %s! Quitting.' % (h_in_name_read, h_in_name_write)
-                                if VERBOSE: print('  * Integral = %.1f' % h_ins[h_in_name_write].Integral())
+                                if VERBOSE: print('  * Integral = %.2f' % h_ins[h_in_name_write].Integral())
                                 h_ins[h_in_name_write].SetDirectory(0) ## Save locally
-                        
-                                if not h_out_name in h_outs.keys():
-                                    h_outs[h_out_name] = h_in.Clone(h_out_name)
-                                    if VERBOSE: print('Created %s' % h_out_name)
-                                    if VERBOSE: print('  * Integral = %.1f' % h_outs[h_out_name].Integral())
-                                    h_outs[h_out_name].SetDirectory(0) ## Save locally
-                                else:
-                                    if VERBOSE: print('Adding %.1f to %s (with %.1f)' % (h_in.Integral(), h_out_name, \
-                                                                                     h_outs[h_out_name].Integral()))
-                                    nXo = h_outs[h_out_name].GetNbinsX()
-                                    nYo = h_outs[h_out_name].GetNbinsY()
-                                    nXi = h_in.GetNbinsX()
-                                    nYi = h_in.GetNbinsY()
-                                    xLo = h_outs[h_out_name].GetXaxis().GetBinLowEdge(1)
-                                    xHo = h_outs[h_out_name].GetXaxis().GetBinLowEdge(nXo+1)
-                                    yLo = h_outs[h_out_name].GetYaxis().GetBinLowEdge(1)
-                                    yHo = h_outs[h_out_name].GetYaxis().GetBinLowEdge(nYo+1)
-                                    xLi = h_in.GetXaxis().GetBinLowEdge(1)
-                                    xHi = h_in.GetXaxis().GetBinLowEdge(nXi+1)
-                                    yLi = h_in.GetYaxis().GetBinLowEdge(1)
-                                    yHi = h_in.GetYaxis().GetBinLowEdge(nYi+1)
-                                    if (nXo != nXi or nYo != nYi or xLo != xLi or xHo != xHi or yLo != yLi or yHo != yHi):
-                                        print('\nMAJOR ERROR!!! %s is %d x %d, %s is %d x %d' % (h_out_name, nXo, nYo,
-                                                                                                 h_in_name_read, nXi, nYi))
-                                        print('Spanning [%.1f-%.1f] x [%.1f-%.1f] vs. [%.1f-%.1f] x [%.1f-%.1f]' % (xLo, xHo, yLo, yHo,
-                                                                                                                    xLi, xHi, yLi, yHi))
-                                        sys.exit()
-                                    else:
-                                        h_outs[h_out_name].Add(h_in)
-                                        if VERBOSE: print('  * Integral = %.1f' % h_outs[h_out_name].Integral())
 
+                                ## Create new histogram if it does not already exist
+                                if firstHist or (syst != 'Nom' and not h_out_name in h_outs.keys()):
+                                    if VERBOSE: print('Creating %s' % h_out_name)
+                                    if VERBOSE: print('  * Integral = %.2f' % h_in.Integral())
+                                    h_outs[h_out_name] = h_in.Clone(h_out_name)
+                                    h_outs[h_out_name].SetDirectory(0) ## Save locally
+                                    ## If new systematic, add previous nominal histograms
+                                    if not firstHist:
+                                        if VERBOSE: print('  * Adding %.2f from previous Nom' % h_out_nom.Integral())
+                                        check_binning(h_outs[h_out_name], h_out_nom)
+                                        h_outs[h_out_name].Add(h_out_nom)
+                                elif syst == 'Nom' and not h_out_name in h_outs.keys():
+                                    print(h_outs.keys())
+                                    assert False, '\nERROR!!! Found no %s in list above.' % h_out_name
+                                ## Add histogram into existing histogram
+                                elif h_out_name in h_outs.keys():
+                                    if VERBOSE: print('Adding %.2f from %s to %s (with %.2f)' % (h_in.Integral(), h_in_name_read,
+                                                                                                 h_out_name, h_outs[h_out_name].Integral()))
+                                    check_binning(h_outs[h_out_name], h_in)
+                                    h_outs[h_out_name].Add(h_in)
+                                    ## Add nominal histogram into previous systematics if not in this category
+                                    if syst == 'Nom' and 'Htoaato4b' in samp:
+                                        for systA in all_systs[samp]:
+                                            if systA in in_systs: continue
+                                            if VERBOSE: print('Adding %.2f from %s to %s (with %.2f)' % (h_in.Integral(), h_in_name_read,
+                                                                                                         h_out_base+'_'+systA, h_outs[h_out_base+'_'+systA].Integral()))
+                                            check_binning(h_outs[h_out_base+'_'+systA], h_in)
+                                            h_outs[h_out_base+'_'+systA].Add(h_in)
+                                        ## End loop: for systA in all_systs[samp]
+                                    ## End conditional: if syst == 'Nom'
+                                else:
+                                    assert False, 'Logic error! firstHist and/or h_out_name in h_outs.keys() neither true nor false.'
+                                ## End conditional: firstHist or (syst != 'Nom' and not h_out_name in h_outs.keys()) / elif ...
                                 nXi = h_in.GetNbinsX()
                                 nYi = h_in.GetNbinsY()
                                 iXw = [ii+1 for ii in range(nXi) if h_in.GetXaxis().GetBinLowEdge(ii+1) == 110][0]
@@ -326,7 +383,7 @@ def main():
                                     if 'Htoaato4b' in samp and '_mA_' in samp and not 'SumH' in samp:
                                         if pf == 'Pass' and syst == 'Nom':
                                             if VERBOSE or PRINTONLY:
-                                                print('Adding %.1f to sig: %s (%s)' % (h_in.Integral(), samp, h_in_name_read))
+                                                print('Adding %.2f to sig: %s (%s)' % (h_in.Integral(), samp, h_in_name_read))
                                             sig_pass += h_in.Integral()
                                             sig_pass_win += h_in.Integral(iXw, jXw, 1, nYi)
                                 ## End conditional: if (wp == 'WP40') or (not 'WP40' in WP_CUTS[cat])
@@ -334,8 +391,9 @@ def main():
                                 if PRINTONLY and not 'Htoaato4b' in samp and (samp == 'Data' or wp == 'WP60'):
                                     print('%s %s %s integral = %.2f' % (wp, pf, samp, h_in.Integral()))
                                     if h_in.GetMaximum() > 0.05*h_in.Integral() or samp == 'MC' or samp == 'SumMC':
-                                        print('  - Max = %.2f (%.1f%%)' % (h_in.GetMaximum(), 100*h_in.GetMaximum()/h_in.Integral()))
+                                        print('  - Max = %.2f (%.2f%%)' % (h_in.GetMaximum(), 100*h_in.GetMaximum()/h_in.Integral()))
                             ## End loop: for syst in in_systs
+                            del h_out_nom
                         ## End loop: for pf in ['Pass', 'Fail']
                     ## End loop: for mAr in MAREGS
                 ## End loop: for mHr in MHREGS
@@ -367,16 +425,19 @@ def main():
                 for mHr in MHREGS:
                     for mAr in MAREGS:
                         for pf in ['Pass', 'Fail']:
-                            for syst in in_systs:
-                                ## Write out individual input histograms
-                                h_in_name = '%s_%s_%s_%s_%s_%s_%s_%s' % (cat, samp, YEAR, mHr, mAr, wp, pf, syst)
-                                out_file.cd()
-                                h_ins[h_in_name].Write()
-                                if cat != CAT_OUT:
-                                    out_file3.cd()
+                            for syst in all_systs[samp]:
+                                if not (syst == 'Nom' or 'Htoaato4b' in samp): continue
+                                if syst in in_systs:
+                                    ## Write out individual input histograms
+                                    h_in_name = '%s_%s_%s_%s_%s_%s_%s_%s' % (cat, samp, YEAR, mHr, mAr, wp, pf, syst)
+                                    out_file.cd()
                                     h_ins[h_in_name].Write()
-                                if VERBOSE: print('Wrote out %s' % h_in_name)
-                                if VERBOSE: print('  * Integral = %.1f' % h_ins[h_in_name].Integral())
+                                    if cat != CAT_OUT:
+                                        out_file3.cd()
+                                        h_ins[h_in_name].Write()
+                                    if VERBOSE: print('Wrote out %s' % h_in_name)
+                                    if VERBOSE: print('  * Integral = %.2f' % h_ins[h_in_name].Integral())
+                                ## End conditional: if syst in in_systs
                                 ## Write out summed output histogram (overwrite if needed)
                                 wp_out = 'WP4060' if (CAT_OUT == 'VVBFjj' and wp == 'WP40') else wp
                                 assert (wp_out in WP_CUTS[CAT_OUT]), '\nERROR!!! %s wp = %s, wp_out = %s, not in WP_CUTS[%s]. Quitting.' % (cat, wp, wp_out, CAT_OUT)
@@ -386,8 +447,8 @@ def main():
                                 out_file2.cd()
                                 h_outs[h_out_name].Write('', R.TObject.kOverwrite)
                                 if VERBOSE: print('Wrote out %s' % h_out_name)
-                                if VERBOSE: print('  * Integral = %.1f' % h_outs[h_out_name].Integral())
-                            ## End loop: for syst in in_systs
+                                if VERBOSE: print('  * Integral = %.2f' % h_outs[h_out_name].Integral())
+                            ## End loop: for syst in all_systs[samp]
                         ## End loop: for pf in ['Pass', 'Fail']
                     ## End loop: for mAr in MAREGS
                 ## End loop: for mHr in MHREGS
@@ -399,7 +460,11 @@ def main():
                     out_file3.Write()
                     out_file3.Close()
             ## End loop: for wp in WP_CUTS[cat]
-        ## End loop: for samp in samps
+            if 'Htoaato4b' in samp and not 'SumHtoaato4b' in samp:
+                with open('logs/systs_%s_%s_%s.txt' % (CAT_OUT, samp, YEAR), 'w') as fsyst:
+                    for syst in all_systs[samp]:
+                        fsyst.write(syst+'\n')
+        ## End loop: for sampIn in samps
 
         iWP = 'WP40' if 'WP40' in WP_CUTS[cat] else WP_CUTS[cat][0]
         if data_pass == 0:
@@ -409,14 +474,13 @@ def main():
         sig_pass     /= len(MASSESA)
         sig_pass_win /= len(MASSESA)
         print('\n*** %8s %s %s (%.2f fb-1) ***' % (YEAR, cat, iWP, LUMIS[YEAR])) 
-        print('Data pass/fail = %d/%d (%.1f%%), est. %.1f in Higgs window (%.1f%%)' % (data_pass, data_fail, 100*data_pass/data_fail, data_pass_win, 100*data_pass_win/data_pass))
-        print('12 - 60 GeV Signal pass = %.1f, %.1f in window (%.1f%%)' % (sig_pass, sig_pass_win, 100*sig_pass_win/sig_pass))
-        print('S/B = %.2f, S/sqrt(B) = %.2f; %.2f sig in window, %.1f total data per 10 fb-1' % (sig_pass_win/data_pass_win, sig_pass_win/math.sqrt(data_pass_win), 10*sig_pass_win/LUMIS[YEAR], 10*(data_pass+data_fail)/LUMIS[YEAR]))
+        print('Data pass/fail = %d/%d (%.2f%%), est. %.2f in Higgs window (%.2f%%)' % (data_pass, data_fail, 100*data_pass/data_fail, data_pass_win, 100*data_pass_win/data_pass))
+        print('12 - 60 GeV Signal pass = %.2f, %.2f in window (%.2f%%)' % (sig_pass, sig_pass_win, 100*sig_pass_win/max(sig_pass, 0.001)))
+        print('S/B = %.2f, S/sqrt(B) = %.2f; %.2f sig in window, %.2f total data per 10 fb-1' % (sig_pass_win/data_pass_win, sig_pass_win/math.sqrt(data_pass_win), 10*sig_pass_win/LUMIS[YEAR], 10*(data_pass+data_fail)/LUMIS[YEAR]))
         if 'WP40' in WP_CUTS[cat]:
             print('S/B = %.2f, S/sqrt(B) = %.2f for 0.75 X4b SF' % (0.75*sig_pass_win/data_pass_win, 0.75*sig_pass_win/math.sqrt(data_pass_win)))
 
     ## End loop: for cat in CAT_INS
-
     print('\n\nAll done!')
     
 ## End function: def main()
