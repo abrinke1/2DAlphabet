@@ -4,13 +4,13 @@
 # Generate toys from ROOT file inputs prepared by preptoyinput.sh
 #################################################################
 
-YEAR="2018"
-DATE="2025_06_03"
+YEAR="Run2"
+DATE="2025_07_14"
 source config/user.config  ## Loads USER, LOC_DIR, and EOS_DIR
-OUTDIR="${EOS_DIR}/raw_inputs/${YEAR}/${DATE}"
+OUTDIR="${EOS_DIR}/raw_inputs/${DATE}"
 
 # Adjust number of toys
-NTOYS=100 # Minimum of 2. 100 takes about 15 minutes per category (bkg-only + signal injections)
+NTOYS=10 # Minimum of 2. 100 takes about 15 minutes per category (bkg-only + signal injections)
 
 # Do you want to generate toys from MC or Data or both?
 #TOYSOURCE='MC'
@@ -26,7 +26,8 @@ START_TIME=$SECONDS
 
 # Categories for which to generate toys
 ## Five essential "fit categories", run with more toys (>= 100)
-declare -a CATS=('LepLo' 'LepHiT' 'gg0lV' 'VVBFjj' 'HadXLo')
+#declare -a CATS=('LepLo' 'LepHiT' 'gg0lV' 'VVBFjj' 'HadXLo')
+declare -a CATS=('LepLo' 'LepHiT' 'gg0lIncl' 'HadXLo')
 # ## "Basic" categories to compare with 5 above, can run with fewer toys (<= 20)
 # declare -a CATS=('LepHi' 'LepIncl' 'gg0lHi' 'gg0lLo' 'gg0lIncl' 'VBFjjHi' 'VBFjjLo' 'VBFjjIncl' 'VjjHi' 'VjjLo' 'VjjIncl' 'tt0lIncl')
 # ## Alternate lepton categories for sensitivity optimization, can run with fewer toys (<= 20)
