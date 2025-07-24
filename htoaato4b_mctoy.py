@@ -199,7 +199,7 @@ def _generate_constraints(fit_poly):
         if i == 0:
             out[i] = {"MIN":-10.0, "MAX":10.0, "NOM":np.log(NOMTF), "ERROR":abs(np.log(NOMTF))}
         else:
-            out[i] = {"MIN":-10.0, "MAX":10.0, "NOM":0.00, "ERROR":1.0},
+            out[i] = {"MIN":-10.0, "MAX":10.0, "NOM":0.00, "ERROR":1.0}
     return out
 
 def _generate_poly(fit_name, verb=False):
