@@ -14,11 +14,11 @@ R.gStyle.SetOptStat(0)  ## Don't display stat boxes
 ## User configuration
 VERBOSE = False
 VVERBOSE = False
-DATE  = '2025_07_14'
+DATE  = '2025_07_25'
 YEARS = ['2016preVFP','2016postVFP','2017','2018']
 YRX = YEARS[-1]
 #CATS = []  ## If empty, merge all categories
-CATS = ['LepHiT','LepLo','HadXLo','gg0lIncl']
+CATS = ['LepHiT','LepLo','gg0lHi','HadXLo','VVBFjj','gg0lVLo']
 
 eos_from_config = [eos for eos in (open('config/user.config','r')).readlines() if eos.startswith('EOS_DIR=')]
 EOS_DIR = eos_from_config[0].replace('EOS_DIR=','').replace('\n','')
@@ -37,12 +37,12 @@ def main():
     for top_dir in [IN_DIR_A, IN_DIR_B]:
         print('\n\n*** Merging categories in %s ***' % top_dir)
         for o_dir in [top_dir+sub_dir for sub_dir in os.listdir(top_dir)]:
-            #do_merge = (len(CATS) == 0)
-            do_merge = True
+            do_merge = (len(CATS) == 0)
+            #do_merge = True  ## Logic to only merge categories *not* in "CATS" list
             for cat in CATS:
                 if cat in o_dir.replace(top_dir,''):
-                    #do_merge = True
-                    do_merge = False
+                    do_merge = True
+                    #do_merge = False  ## Logic to only merge categories *not* in "CATS" list
             if not do_merge:
                 continue
             RAW_IN = ('/raw_inputs/' in o_dir and not '2D_in_merged_' in o_dir)
