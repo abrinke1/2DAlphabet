@@ -37,7 +37,7 @@ if SIGINJ.startswith('mA_'):
     assert MASSA in MASSESA, '\nERROR!!! Invalid mass %s from %s. Quitting.' % (MASSA, SIGINJ)
     MASSESA = [MASSA]
 YEAR    = 'Run2'    ## Data year
-DATE    = '2025_07_14'
+DATE    = '2025_07_25'
 PATH    = EOS_DIR+'/plots/'+DATE+'/'+CAT+'/'+YEAR
 UseMCToy   = (TOYSOURCE == 'MC')
 UseDataToy = (TOYSOURCE == 'Data')
@@ -199,7 +199,7 @@ def _generate_constraints(fit_poly):
         if i == 0:
             out[i] = {"MIN":-10.0, "MAX":10.0, "NOM":np.log(NOMTF), "ERROR":abs(np.log(NOMTF))}
         else:
-            out[i] = {"MIN":-10.0, "MAX":10.0, "NOM":0.00, "ERROR":1.0}
+            out[i] = {"constraint":"param 0.0 3.0", "MIN":-10.0, "MAX":10.0, "NOM":0.00, "ERROR":1.0}
     return out
 
 def _generate_poly(fit_name, verb=False):
@@ -363,11 +363,11 @@ def test_make(SRorCR, fitN):
                 sp_name = sf_name+'_par0'
                 ## Create "nuisances" similar to _createFuncVars in alphawrap.py
                 smear_nuis[shift] = {'name': sp_name,
-                                     'obj': RooRealVar(sp_name, sp_name, -1.0, -100.0, 100.0),
-                                     'constraint': 'flatParam'}
-                smear_nuis[shift]['obj'].setError(10.0)
+                                     'obj': RooRealVar(sp_name, sp_name, -1.5, -10.0, 10.0),
+                                     'constraint': 'param -1.5 3.0'}
+                smear_nuis[shift]['obj'].setError(3.0)
                 ## Function (1/6)*(1+tanh(x)) maps [-inf, 0, +inf] --> [0, 1/6, 1/3]
-                ## Default starting value of x = -1 corresponds to 4% smearing (92% from central bin)
+                ## Default starting value of x = -1.5 corresponds to 1.6% smearing (94% from central bin)
                 smear_funcs[shift] = RooFormulaVar(sf_name, sf_name, '(1.0/6.0)*(1.0+tanh(@0))',
                                                    RooArgList(smear_nuis[shift]['obj']))
 
