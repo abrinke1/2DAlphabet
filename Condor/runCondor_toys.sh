@@ -6,7 +6,9 @@
 Nmin=-1
 Nmax=100
 ## Fit transfer function
+#FIT="1x1C"
 FIT="2s2C"
+#FIT="2x2C"
 # Condor log directory
 LOG_DIR="log"
 OUT_DIR="out"
@@ -50,7 +52,7 @@ mkdir "$ERR_DIR"
 for ((ii=Nmin; ii<Nmax; ii++)); do
     # Loop over categories
     #for iCat in LepLo LepHi gg0lLo gg0lHi VBFjjLo VBFjjHi VjjLo VjjHi tt0l LepComb gg0lComb VBFjjComb VjjComb HadWP40Comb HadWP60Comb LepHadComb; do
-    for iCat in gg0lV; do
+    for iCat in gg0lHi; do
 	# Loop over Data and MC
 	for iDM in Data MC; do
 	    for iMA in 12; do
