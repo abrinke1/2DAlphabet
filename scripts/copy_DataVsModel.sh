@@ -2,16 +2,20 @@
 
 source config/user.config  ## Loads USER, LOC_DIR, and EOS_DIR
 YEAR="2018"
-DATE="2025_06_03"
+DATE="2025_07_25"
 MHREG="pnet"
 MAREG="34a"
-CATS=("gg0lV" "VVBFjj" "HadXLo" "LepHiT" "LepLo")
-FITS=("0x0" "1d1C" "1x1C" "2d2C" "2s2C" "2d2C" "0x0smr" "1d1Csmr" "1x1Csmr" "2d2Csmr" "2s2Csmr")
+#CATS=("gg0lV" "VVBFjj" "HadXLo" "LepHiT" "LepLo")
+#FITS=("0x0" "1d1C" "1x1C" "2d2C" "2s2C" "2d2C" "0x0smr" "1d1Csmr" "1x1Csmr" "2d2Csmr" "2s2Csmr" "2x2C")
 DMCS=("MC" "Data")
+#CATS=("gg0lHi" "gg0lLo" "VVBFjj")
+CATS=("gg0lLo")
+FITS=("2s2C")
+#DMCS=("Data")
 WPS=("WP40" "WP60" "WP4060")
 PLOTS=("postfit_projx" "postfit_projy" "data_obs_Pass_2D" "data_obs_Fail_2D" "TotalBkg_Pass_2D" "TotalBkg_Fail_2D")
 
-OUT_DIR="figures/DataVsModel/"
+OUT_DIR="figures/DataVsModel/${DATE}/"
 echo "Just to be sure, you want to output to:"
 echo ${OUT_DIR}
 if [ ! -d ${OUT_DIR} ]; then
