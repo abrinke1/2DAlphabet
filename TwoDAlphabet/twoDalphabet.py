@@ -328,7 +328,7 @@ class TwoDAlphabet:
     def MakeCard(self, subledger, subtag, workspaceDir='../'):
         with cd(self.tag):
             _runDirSetup(subtag)
-            MakeCard(subledger, subtag, workspaceDir)
+            MakeCard(subledger, subtag, workspaceDir, self.tag)
 
 # -------- STAT METHODS ------------------ #
     def MLfit(self, subtag, cardOrW='card.txt', rMin=-1, rMax=10, setParams={}, verbosity=0, usePreviousFit=False, defMinStrat=0, extra=''):
@@ -792,14 +792,28 @@ def _runDirSetup(runDir):
     
     return runDir
 
-def MakeCard(ledger, subtag, workspaceDir):
+def MakeCard(ledger, subtag, workspaceDir, stg):
     combine_idx_map = ledger._getCombineIdxMap()
-
     card_new = open('%s/card.txt'%subtag,'w')
     # imax (bins), jmax (backgrounds+signals), kmax (systematics) 
     imax = 3*len(ledger.GetRegions()) # pass, fail for each 'X' axis category    
     jmax = ledger.nbkgs + ledger.nsignals -1
     kmax = len(ledger.GetShapeSystematics()) # does not include alphaParams
+    ## Add in gaussian constraints for fit parameters
+    if ('_1x0' in stg or '_0x1' in stg):
+        kmax += 1
+    if ('_1d1' in stg or '_2x0' in stg or '_0x2' in stg):
+        kmax += 2
+    if ('_1x1' in stg or '_2d1' in stg or '_1d2' in stg):
+        kmax += 3
+    if ('_2d2' in stg or '_2s1' in stg or '_1s2' in stg):
+        kmax += 4
+    if ('_2s2' in stg or '_2x1' in stg or '_1x2' in stg):
+        kmax += 5
+    if '_2x2' in stg:
+        kmax += 8
+    if 'smr_' in stg:
+        kmax += 4
     channels = ['_'.join(r) for r in itertools.product(ledger.GetRegions(),['LOW','SIG','HIGH'])]
     
     card_new.write('imax %s\n'%imax)      
