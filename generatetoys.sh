@@ -5,7 +5,7 @@
 #################################################################
 
 YEAR="Run2"
-DATE="2025_07_14"
+DATE="2025_07_25"
 source config/user.config  ## Loads USER, LOC_DIR, and EOS_DIR
 OUTDIR="${EOS_DIR}/raw_inputs/${DATE}"
 
@@ -17,17 +17,12 @@ NTOYS=10 # Minimum of 2. 100 takes about 15 minutes per category (bkg-only + sig
 #TOYSOURCE='Data'
 TOYSOURCE='DataAndMC'
 
-# # Are using 2D Alphabet output? (Option from Hichem not currently enabled - AWB 2025.05.16)
-# WORKSPACE='2Dworkspace' # YES
-# #WORKSPACE='No2Dworkspace' # NO
-
 # Start the timer
 START_TIME=$SECONDS
 
 # Categories for which to generate toys
-## Five essential "fit categories", run with more toys (>= 100)
-#declare -a CATS=('LepLo' 'LepHiT' 'gg0lV' 'VVBFjj' 'HadXLo')
-declare -a CATS=('LepLo' 'LepHiT' 'gg0lIncl' 'HadXLo')
+## Six essential "fit categories", run with more toys (>= 100)
+declare -a CATS=('LepLo' 'LepHiT' 'gg0lHi' 'gg0lVLo' 'VVBFjj' 'HadXLo')
 # ## "Basic" categories to compare with 5 above, can run with fewer toys (<= 20)
 # declare -a CATS=('LepHi' 'LepIncl' 'gg0lHi' 'gg0lLo' 'gg0lIncl' 'VBFjjHi' 'VBFjjLo' 'VBFjjIncl' 'VjjHi' 'VjjLo' 'VjjIncl' 'tt0lIncl')
 # ## Alternate lepton categories for sensitivity optimization, can run with fewer toys (<= 20)
