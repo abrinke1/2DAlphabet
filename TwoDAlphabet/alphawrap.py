@@ -3,7 +3,7 @@ from TwoDAlphabet.helpers import roofit_form_to_TF1
 from ROOT import RooRealVar, RooFormulaVar, RooArgList, RooParametricHist2D, RooConstVar, TFormula, RooAddition
 from TwoDAlphabet.binning import copy_hist_with_new_bins
 import itertools
-# import numpy as np
+import numpy as np
 # from numpy.lib.function_base import piecewise
 
 _subspace = ['LOW','SIG','HIGH']
@@ -487,16 +487,24 @@ class BinnedDistribution(Generic2D):
                     # ## Old implementation: simple flat param for yield in each background bin, bounded to be > 0
                     # self.binVars[bin_name] = RooRealVar(bin_name, bin_name, max(1.0, bin_val), 1e-6, 1e6)
                     # self.nuisances.append({'name':bin_name, 'constraint':'flatParam', 'obj': self.binVars[bin_name]})
-                    ## New implementation: yield is data yield (min of 1) multiplied by an exponential, so non-negative
+                    ## New implementation: yield is data yield (min of 0.5) multiplied by an exponential, so non-negative
                     bin_val = cat_hist.GetBinContent(xbin,ybin)
-                    if verbose and bin_val < 1: print('\nBin (%d, %d) has %d entries, set to 1' % (xbin, ybin, bin_val))
-                    form = '%d.0*exp(@0)' % max(1, bin_val)
+                    if verbose and bin_val < 1: print('\nBin (%d, %d) has %d entries, set to 0.5' % (xbin, ybin, bin_val))
+                    bin_val_nom = max(0.5, bin_val)
+                    form = '%d.0*exp(@0)' % bin_val_nom
                     bin_par = bin_name+'_par0'
                     ## Construct a scaling nuisance parameter with default value exp(0) = 1.0
                     bin_nuis = RooRealVar(bin_par, bin_par, 0.0, -20.0, 10.0)
                     bin_nuis.setError(3.0)  ## Factor of 20 up or down
                     self.binVars[bin_name] = RooFormulaVar(bin_name, bin_name, form, RooArgList(bin_nuis))
                     self.nuisances.append({'name':bin_par, 'constraint':'flatParam', 'obj': bin_nuis})
+
+                    # ## Rather than a flatParam, implement a Gaussian constraint on exponent, roughly 3 sigma
+                    # ## +1 sigma = 3*sqrt(N+12), so if N = 4, N+1 sigma = 16, so N-1 sigma = 4*(4/16) = 1
+                    # sigma = 3.0*np.sqrt(bin_val + 12.0)
+                    # sigma_exp = np.log((bin_val_nom + sigma) / bin_val_nom)
+                    # self.nuisances.append({'name':bin_par, 'constraint':'param 0.0 %.6f' % sigma_exp, 'obj': bin_nuis})
+
                     self._varStorage.append(self.binVars[bin_name]) # For safety if we add shape templates
 
     def AddShapeTemplates(self,nuis_name,up_shape,down_shape,constraint="param 1 0"):
