@@ -21,12 +21,15 @@ limits = np.array([], dtype=lim_keys)  ## Asymptotic limits
 
 ## File pattern for limit output
 for mA in ['12']+[str(5*iMA) for iMA in range(3,13)]:
-#for mA in ['15','30','55']:
     #for mod in ['','A','B','C','D','E','F']:
     for DMC in ['MC','Data']:
         in_dir = 'output/%stoys/Mergecards/%s%srounded' % (DMC, DMC, DMC)
-        for cat in ['LepLo']:
-            for fit in ['0x0']:
+        # for cat in ['gg0lHi','VVBFjj','HadXLo']:
+        #     for fit in ['2s2C']:
+        # for cat in ['gg0lLo']:
+        #     for fit in ['2x2C']:
+        for cat in ['LepHiT','LepLo']:
+            for fit in ['1x1C']:
                 algo = 'AsymptoticLimits'
                 base = 'higgsCombine.test'+algo
                 suff = algo+'.mH120.root'
@@ -91,7 +94,12 @@ for iL in range(len(limits)):
         assert(limits[jL]['cat'] == lim['cat'])
         assert(limits[jL]['mA']  == lim['mA'])
     print('mA = %s %s median expected limit = %.2f%%' % (lim['mA'], lim['cat'], lim['limit']))
+
+    # print('mA = %s %s median exp. (obs.) limit = %.2f%% (%.2f%%) [%.2f, %.2f] {%.2f, %.2f}' % (lim['mA'], lim['cat'], lim['limit'], limits[iL+3]['limit'], limits[iL-1]['limit'], limits[iL+1]['limit'], limits[iL-2]['limit'], limits[iL+2]['limit']))
+
     # if limits[iL+3]['limit'] < limits[iL-2]['limit'] or limits[iL+3]['limit'] > limits[iL+2]['limit']:
-    #     print('  * WARNING!!! Observed limit %.2f%% outside 95% CL expected!!! (%.2f%% - %.2f%%)' % (limits[iL+3]['limit'], limits[iL-2]['limit'], limits[iL+2]['limit']))
-    # elif limits[iL+3]['limit'] < limits[iL-2]['limit'] or limits[iL+3]['limit'] > limits[iL+2]['limit']:
-    #     print('  * Notable: Observed limit %.2f%% outside 68% CL expected. (%.2f%% - %.2f%%)' % (limits[iL+3]['limit'], limits[iL-1]['limit'], limits[iL+1]['limit']))
+    #     #print('  * WARNING!!! Observed limit outside 95% CL expected!!!')
+    #     print('  * WARNING!!! Observed limit %.2f%% outside 95\% CL expected!!! (%.2f%% - %.2f%%)' % (limits[iL+3]['limit'], limits[iL-2]['limit'], limits[iL+2]['limit']))
+    # elif limits[iL+3]['limit'] < limits[iL-1]['limit'] or limits[iL+3]['limit'] > limits[iL+1]['limit']:
+    #     #print('  * Notable: Observed limit outside 68% CL expected.')
+    #     print('  * Notable: Observed limit %.2f%% outside 68\% CL expected. (%.2f%% - %.2f%%)' % (limits[iL+3]['limit'], limits[iL-1]['limit'], limits[iL+1]['limit']))
