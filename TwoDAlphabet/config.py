@@ -402,7 +402,12 @@ class OrganizedHists():
         #for infilename,histdf in self.hist_map.items():
         for infilename in hist_map_keys:
             histdf = self.hist_map[infilename]
-            infile = ROOT.TFile.Open(infilename)
+            infiletoopen = infilename
+            ## TODO : Hacky solution to point to file with systematics. Should fix!!! - AWB 2025.07.25
+            if 'Htoaato4b_mA' in infilename:
+                infiletoopen = infilename.replace('_pnet_34a','')
+                #print('Replaced %s with %s' % (infilename, infiletoopen))
+            infile = ROOT.TFile.Open(infiletoopen)
             for row in histdf.itertuples():
                 if row.source_histname not in [k.GetName() for k in infile.GetListOfKeys()]:
                     raise NameError('Histogram name %s does not exist in file %s.'%(row.source_histname,infile.GetName()))
