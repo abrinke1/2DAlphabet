@@ -29,7 +29,7 @@ for mA in MASSESA:  ## Signal to inject, in 1/1000ths
     elif int(mA) <= 40: SIGINJ[mA] = [50]  ## [10, 20, 50, 100]
     else:               SIGINJ[mA] = [100] ## [10, 20, 50, 100, 200]
 YEAR = 'Run2'
-DATE = '2025_07_14'
+DATE = '2025_07_25'
 eos_from_config = [eos for eos in (open('config/user.config','r')).readlines() if eos.startswith('EOS_DIR=')]
 EOS_DIR = eos_from_config[0].replace('EOS_DIR=','').replace('\n','')
 PLOT_DIR_IN = EOS_DIR+'/plots/'+DATE+'/'+CAT+'/'+YEAR
@@ -411,11 +411,6 @@ def toys_generator(hist, nToy, output_dir, root_cmd, h_sigs={}, PF=None):
 
 print("Running Haa4b_makeMCtoy.py for the following category:", CAT)
 
-## "Super-category" defines hadronic directory / file names
-superCat = CAT
-for supr in ['gg0l','VBFjj','Vjj','tt0l']:
-    if CAT.startswith(supr) and CAT != 'gg0lV':
-        superCat = supr+'Incl'
 ## Most categories used WP60; only gg0l and VBFjj use WP40
 WP = 'WP60'
 if CAT.startswith('gg0l') or CAT.startswith('VBFjj'):
@@ -428,10 +423,10 @@ samps = ['Data']
 sigs = None
 if CAT.startswith('Had') or CAT.startswith('gg0l') or ('VBFjj' in CAT) or CAT.startswith('Vjj') or CAT.startswith('tt0l'):
     ## Background MC already summed ('MC') for all categories except VBFjj, which has manual summing ('SumMC')
+    ## Use manual summing ('SumMC') for all categories, since merge_files_mctoy.py suppresses QCD MC spikes
     #samps.append('SumMC' if (('VBFjj' in CAT) or (CAT == 'gg0lV')) else 'MC')
-    samps.append('MC')  ## TODO : SumMC files empty for some reason - AWB 2025.07.22
-    #sigs = ['ggH','VBFH','WH','ZH','ttH','SumH']
-    sigs = ['ggH','VBFH','WH','ZH','ttH']  ## TODO : SumH histograms problematic for some reason - AWB 2025.07.22
+    samps.append('SumMC')
+    sigs = ['ggH','VBFH','WH','ZH','ttH','SumH']
     for sig in sigs:
         for mA in MASSESA:
             samps.append(sig+'toaato4b_mA_'+str(mA))
@@ -444,10 +439,8 @@ elif CAT.startswith('Lep'):
     else:
         assert False, '\nInvalid CAT = %s!!! Quitting.' % CAT
     ## Use manual summing ('SumMC') instead of original sum ('MC') in order to drop QCD from Zvv background model
-    #samps.append('SumMC')
-    samps.append('MC')  ## TODO : SumMC files empty for some reason - AWB 2025.07.22
-    #sigs = ['WH','ZH','ttH','SumH']
-    sigs = ['WH','ZH','ttH']  ## TODO : SumH histograms problematic for some reason - AWB 2025.07.22
+    samps.append('SumMC')
+    sigs = ['WH','ZH','ttH','SumH']
     for sig in sigs:
         for mA in MASSESA:
             samps.append(sig+'toaato4b_mA_'+str(mA))
@@ -458,7 +451,7 @@ else:
 print('\nIn Haa4b_makeMCtoy.py, looking for the following samples:')
 print(samps)
 
-base_pth_in = '%s/raw_inputs/%s/2D_in_merged_%s/%s/' % (EOS_DIR, DATE, superCat, YEAR)
+base_pth_in = '%s/raw_inputs/%s/2D_in_merged_%s/%s/' % (EOS_DIR, DATE, CAT, YEAR)
 
 # step 1, merge bkg MC, set bin errors based on effective yields
 h_orig,h_sig = {},{}
@@ -473,7 +466,7 @@ for mA in MASSESA:
 print(samps)
 
 for samp in samps:
-    filepath = base_pth_in+superCat+'_'+samp+'_'+YEAR+'.root'
+    filepath = base_pth_in+CAT+'_'+samp+'_'+YEAR+'.root'
     print(f"add {filepath}")
     hname_base = CAT+'_'+samp+'_'+YEAR+'_'+MHREG+'_'+MAREG+'_'+WP
     hname = {}
@@ -514,6 +507,8 @@ for samp in samps:
     ## For WP40 samples (gg0l and VBFjj and VVBFjj), scale background MC WP60 --> WP40
     if (WP == 'WP40' or WP == 'WP4060') and samp != 'Data' and not 'Htoaato4b' in samp:
         for PF in PFs:
+            ## As of right now, WP60 unavailable for VBFjj, and thus for VVBFjj and gg0lVLo -- AWB 2025.07.24
+            if CAT != 'gg0lHi' and CAT != 'gg0lLo': continue
             h_in_WP60  = in_file.Get(hname[PF].replace(WP,'WP60'))
             WP40_yield = h_in[PF].Integral()
             h_in[PF].Scale(0)
@@ -530,13 +525,17 @@ for samp in samps:
         if samp == 'Data':
             h_orig['Data'][PF] = h_in[PF].Clone(hname[PF])
             h_orig['Data'][PF].SetDirectory(0)
+            print('Data %s integral = %d' % (PF, h_orig['Data'][PF].Integral()))
         elif h_orig['MC'][PF] is None:
             h_orig['MC'][PF] = h_in[PF].Clone(hname[PF].replace('_%s_' % samp, '_MC_'))
             h_orig['MC'][PF].SetDirectory(0)
+            print('Initial MC (%s) %s integral = %.1f' % (samp, PF, h_orig['MC'][PF].Integral()))
         else:
             h_orig['MC'][PF].Add()
     ## End loop: for PF in PFs
 ## End loop: for samp in samps
+print('MC Pass integral = %.1f' % h_orig['MC']['Pass'].Integral())
+print('MC Fail integral = %.1f' % h_orig['MC']['Fail'].Integral())
 
 ## Scale MC to data
 for PF in PFs: h_orig['MC'][PF] = scale_to_ref(h_orig['MC'][PF], h_orig['Data'][PF])
