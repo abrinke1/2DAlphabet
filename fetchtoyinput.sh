@@ -5,7 +5,7 @@
 # Takes ~5 minutes (not including VBFjj)               
 #######################################################
 
-DATE="2025_07_14"
+DATE="2025_07_25"
 source config/user.config  ## Loads USER, LOC_DIR, and EOS_DIR
 OUTDIR="${EOS_DIR}/raw_inputs/${DATE}"
 
@@ -27,17 +27,35 @@ for CAT in gg0lLo gg0lHi VjjLo VjjHi tt0l0b tt0l1b ZvvLo ZvvHi; do
     mkdir -p ${OUTDIR}/${CAT}/Run2
     for YEAR in 2016preVFP 2016postVFP 2017 2018; do
 	mkdir -p ${OUTDIR}/${CAT}/${YEAR}
-	echo "cp -r /eos/cms/store/user/ssawant/htoaa/analysis/20250713_DatacardsFull*/${YEAR}/*/2DAlphabet_inputFiles/${CAT}/*root ${OUTDIR}/${CAT}/${YEAR}/"
-	cp -r /eos/cms/store/user/ssawant/htoaa/analysis/20250713_DatacardsFull*/${YEAR}/*/2DAlphabet_inputFiles/${CAT}/*root ${OUTDIR}/${CAT}/${YEAR}/
+	echo "cp -r /eos/cms/store/user/ssawant/htoaa/analysis/20250722_DatacardsFullSyst/${YEAR}/*/2DAlphabet_inputFiles/${CAT}/*root ${OUTDIR}/${CAT}/${YEAR}/"
+	cp -r /eos/cms/store/user/ssawant/htoaa/analysis/20250722_DatacardsFullSyst/${YEAR}/*/2DAlphabet_inputFiles/${CAT}/*root ${OUTDIR}/${CAT}/${YEAR}/
     done
 done
 
-# # -- VBF --
-# echo "Starting VBF ..."
-# mkdir ${OUTDIR}/VBFjj
-# cp /afs/cern.ch/user/m/moanwar/public/2DAlphabet_2018_4June/analyze_htoaa_stage1.root ${OUTDIR}/VBFjj/
-# # -- tt0l (tighter top tagger, separated by AK4 b-tags) --
-# cp -r /eos/cms/store/user/ssawant/htoaa/analysis/20250626_tt0lDatacardsFullSyst/2018/2DAlphabet_inputFiles/* ${OUTDIR}/
+# -- VBF --
+echo "Starting VBF ..."
+for CAT in VBFjjLo VBFjjHi; do
+    mkdir -p ${OUTDIR}/${CAT}/Run2
+    for YEAR in 2016preVFP 2016postVFP 2017 2018; do
+	mkdir -p ${OUTDIR}/${CAT}/${YEAR}
+	CATIN="${CAT}"
+	if [[ "${CAT}" == "VBFjjLo" ]]; then
+		CATIN="VBFLo"
+	elif [[ "${CAT}" == "VBFjjHi" ]]; then
+		CATIN="VBFHi"
+	fi
+	echo "cp -r /afs/cern.ch/work/m/moanwar/public/hto2ato4b/2DAlphabetfiles_VBF_sys/20250721_DataMC/${YEAR}/VBFjj/2DAlphabet_inputFiles/${CATIN}/*root ${OUTDIR}/${CAT}/${YEAR}/"
+	cp -r /afs/cern.ch/work/m/moanwar/public/hto2ato4b/2DAlphabetfiles_VBF_sys/20250721_DataMC/${YEAR}/VBFjj/2DAlphabet_inputFiles/${CATIN}/*root ${OUTDIR}/${CAT}/${YEAR}/
+	echo "Changing file names from ${CATIN} to ${CAT}"
+	cd ${OUTDIR}/${CAT}/${YEAR}/
+	for FILEIN in *root; do
+	    FILEOUT=${FILEIN/"$CATIN"/"$CAT"}
+	    #echo "mv ${FILEIN} ${FILEOUT}"
+	    mv ${FILEIN} ${FILEOUT}
+	done
+	cd -
+    done
+done
 
 # -- Leptonic categories from Hichem (Zll, Wlv, ttlv, ttll) --
 echo "Starting leptonic ..."
