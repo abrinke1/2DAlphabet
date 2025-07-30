@@ -6,6 +6,7 @@
 TOYMIN=-1
 TOYMAX=-1
 FIT="1x1C"
+#FIT="2s2C"
 source config/user.config  ## Loads USER, LOC_DIR, and EOS_DIR
 
 echo "Just to be sure, you want to output to:"
@@ -18,11 +19,12 @@ echo ${EOS_DIR}
 #for iCat in gg0lLo gg0lHi gg0lIncl gg0lComb gg0lInclV VBFjjLo VBFjjHi VBFjjIncl VBFjjComb VjjLo VjjHi VjjIncl VjjComb tt0l; do
 for iToy in $(seq ${TOYMIN} ${TOYMAX}); do
     for iMA in 12 15 20 25 30 35 40 45 50 55 60; do
-	for iDMC in MC; do
-	    for iCat in LepHiT; do
-		for SINJ in "false" "true"; do
+	for iDMC in Data; do
+	    for iCat in HadXLo; do
+		for SINJ in "false"; do
 	    	    echo "./run_toy.sh ${iToy} ${iDMC} ${iCat} ${iMA} ${FIT} ${SINJ}"
-	    	./run_toy.sh ${iToy} ${iDMC} ${iCat} ${iMA} ${FIT} ${SINJ}
+	    	    ./run_toy.sh ${iToy} ${iDMC} ${iCat} ${iMA} ${FIT} ${SINJ}
+		done
 	    done
 	done
     done
