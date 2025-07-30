@@ -171,7 +171,9 @@ def _working_json():
         working_json = working_json.replace('_syst.json', '_'+SIGINJ+'_syst.json')
     working_json = working_json.replace('_syst.json', '_%s_%s_syst.json' % (MHREG, MAREG))
     if ITOY >= 0: working_json = EOS_DIR+'/'+working_json
-    return working_json
+
+    special_test_json = 'jsons/gg0lHi_Htoaato4b_MCrounded_pnet_34a_syst.json'
+    return special_test_json
         
 def _load_rpf_smear(fitN):
     twoD_for_rpf_smear = TwoDAlphabet(_working_area(fitN), _working_json(),
