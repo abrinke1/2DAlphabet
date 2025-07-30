@@ -10,15 +10,17 @@ import glob
 R.gStyle.SetOptStat(0)  ## Don't display stat boxes
 
 VERBOSE = False
-YEAR    = '2018'
-DATE    = '2025_06_03'
+YEAR    = 'Run2'
+DATE    = '2025_07_25'
 DMC     = 'Data'  ## Data or MC
 SIGINJ  = ''
 #SIGINJ  = '*_mA_*_sigBr_*'
 doSigInj = ('_sigBr_' in SIGINJ)
-CATS    = ['HadXLo']
+#CATS    = ['gg0lHi']
+CATS    = ['LepHiT']
 MASSESA = ['12']+[str(iMA*5) for iMA in range(3,13)]
 #MASSESA = ['12']
+#FITS    = ['2s2C']
 FITS    = ['1x1C']
 MIN_PTS = 100  ## Minimum number of points the scan should contain
 
@@ -26,12 +28,12 @@ eos_from_config = [eos for eos in (open('config/user.config','r')).readlines() i
 loc_from_config = [loc for loc in (open('config/user.config','r')).readlines() if loc.startswith('LOC_DIR=')]
 EOS_DIR = eos_from_config[0].replace('EOS_DIR=','').replace('\n','')
 LOC_DIR = loc_from_config[0].replace('LOC_DIR=','').replace('\n','')
-IN_DIR  = EOS_DIR+'/ToyStudies/'+YEAR+'/'+DATE
+IN_DIR  = EOS_DIR+'/ToyStudies/'+DATE
 RND_DIR = LOC_DIR+'/output/%stoys/Mergecards/%s%srounded' % (DMC, DMC, DMC)
-OUT_DIR = LOC_DIR+'/figures/MultiDimFit'
+OUT_DIR = LOC_DIR+'/figures/MultiDimFit/'+DATE+'/'+YEAR
 
 if not os.path.exists(OUT_DIR):
-    os.mkdir(OUT_DIR)
+    os.system('mkdir -p '+OUT_DIR)
 
 def solve_parab(pts,xs,ys):
     x1,x2,x3 = pts[0][xs],pts[1][xs],pts[2][xs]
@@ -58,7 +60,7 @@ for cat in CATS:
             algo = 'MultiDimFit'
             base = 'higgsCombine.test'+algo
             suff = 'MultiDimFit.mH120.root'
-            file_pattern = '%s/%s/%s.%s.mA_%s.%s%s.%stoy*.%s' % (IN_DIR, cat, base, cat, mA, fit, SIGINJ, DMC, suff)
+            file_pattern = '%s/%s/%s/%s.%s.mA_%s.%s%s.%stoy*.%s' % (IN_DIR, cat, YEAR, base, cat, mA, fit, SIGINJ, DMC, suff)
             rnd_pattern  = '%s/%s.%s.mA_%s.%s%s.%s%srounded.%s' % (RND_DIR, base, cat, mA, fit, SIGINJ, DMC, DMC, suff)
             in_files  = glob.glob(file_pattern)
             rnd_files = glob.glob(rnd_pattern)
@@ -229,7 +231,7 @@ for cat in CATS:
             print('\nFinished loop for %s %s %s: %d / %d files actually used (%d entries)\n\n' % (cat, mA, fit, nFiles, len(rnd_files+in_files), nEntry))
 
             injStr = 'sigBr_%03d' % (injSig*1000) if doSigInj else 'bkgOnly'
-            h_str = 'h_MultiDim_%s_%s_%s_%s_%s' % (cat, mA, fit, injStr, DMC)
+            h_str = 'h_MultiDim_%s_%s_%s_%s_%s_%s' % (cat, mA, fit, injStr, DMC, YEAR)
             xMax = 0.10 if int(mA) < 22 else (0.2 if int(mA) < 42 else 0.40)
             zpMax = 8.0 if doSigInj else 4.0
             ipMax = 4.0
