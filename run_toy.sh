@@ -8,7 +8,7 @@ FITS=($5)     ## Fit to use, e.g. 1x1C or 2s2C, or NxM for "Comb". Can use multi
 sInj=$6       ## Whether to inject signal (True/true/T/1 vs. False/false/F/0)
 NTOYGOF=100   ## Number of toys 2DAlphabet will run for goodness-of-fit test
 YEAR="Run2"
-DATE="2025_07_14"
+DATE="2025_07_25"
 MHREG="pnet"
 MAREG="34a"
 #FITS=("0x0" "1d1C" "1x1C" "2d2C" "2s2C" "2x2C")  ## Needs to be a subset of FITLIST in htoaato4b_mctoy.py
@@ -286,11 +286,11 @@ for iFit in "${FITS[@]}"; do
 	## MultiDimFit
 	SCAN="--setParameterRanges r=-1,1 --points 1"
 	if [[ "$iMA" -ge "11" && "$iMA" -le "20" ]]; then
-	    SCAN="--setParameterRanges r=-0.00025,0.10025 --points 201"
+	    SCAN="--setParameterRanges r=-0.0001,0.1001 --points 501"
 	elif [ "$iMA" -le "40" ]; then
-	    SCAN="--setParameterRanges r=-0.0005,0.2005 --points 201"
+	    SCAN="--setParameterRanges r=-0.00025,0.20025 --points 401"
 	elif [ "$iMA" -lt "63" ]; then
-	    SCAN="--setParameterRanges r=-0.001,0.401 --points 201"
+	    SCAN="--setParameterRanges r=-0.0005,0.4005 --points 401"
 	fi
 
 	echo "combine -M MultiDimFit ${OUTDIR}/combined_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.txt --algo grid ${SCAN} --floatOtherPOIs=1 --preFitValue=0 --cminDefaultMinimizerStrategy 0 --robustFit 1 -n .testMultiDimFit.${iCat}.mA_${iMA}.${iFit}${SIN}.${dmToy}"
