@@ -5,7 +5,7 @@
 # 20 - 30 minutes per category per year, with systematics
 #########################################################
 
-DATE="2025_07_14"
+DATE="2025_07_25"
 source config/user.config  ## Loads USER, LOC_DIR, and EOS_DIR
 OUTDIR="${EOS_DIR}/raw_inputs/${DATE}"
 
@@ -13,10 +13,10 @@ OUTDIR="${EOS_DIR}/raw_inputs/${DATE}"
 START_TIME=$SECONDS
 
 ## Prepare inputs
-#echo " > Merging categories (LepLo LepHi LepHiT gg0lV VVBFjj HadXLo LepIncl gg0lIncl VBFjjIncl VjjIncl tt0lIncl)"
-#for CAT in LepLo LepHi LepHiT gg0lV VVBFjj HadXLo LepIncl gg0lIncl VBFjjIncl VjjIncl tt0lIncl; do
-echo " > Merging categories (LepHiT LepLo gg0lIncl HadXLo)"
-for CAT in LepHiT LepLo gg0lIncl HadXLo; do
+# echo " > Merging categories (gg0lHi gg0lVLo VVBFjj LepHiT LepLo HadXLo gg0lV LepHi LepIncl gg0lIncl VBFjjIncl VjjIncl tt0lIncl)"
+# for CAT in gg0lHi gg0lVLo VVBFjj LepHiT LepLo HadXLo gg0lV LepHi LepIncl gg0lIncl VBFjjIncl VjjIncl tt0lIncl; do
+echo " > Merging categories (gg0lHi gg0lVLo VVBFjj LepHiT LepLo HadXLo)"
+for CAT in gg0lHi gg0lVLo VVBFjj LepHiT LepLo HadXLo; do
     #for YEAR in 2016preVFP 2016postVFP 2017 2018; do
     for YEAR in XXXX; do
 	## Producing "Incl" categories also produces Hi/Lo plots
