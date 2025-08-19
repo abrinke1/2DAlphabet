@@ -11,17 +11,14 @@ R.gStyle.SetOptStat(0)  ## Don't display stat boxes
 
 VERBOSE = False
 YEAR    = 'Run2'
-DATE    = '2025_07_25'
-DMC     = 'Data'  ## Data or MC
-SIGINJ  = ''
-#SIGINJ  = '*_mA_*_sigBr_*'
-doSigInj = ('_sigBr_' in SIGINJ)
-#CATS    = ['gg0lHi']
+DATE    = '2025_08_15'
+DMC     = str(sys.argv[1])  ## Data or MC
+doSigInj = bool(int(sys.argv[2]))
+SIGINJ  = '*_mA_*_sigBr_*' if doSigInj  else ''
+#CATS    = ['LepHiT','LepLo','gg0lVHi','gg0lVLo','HadXHi','HadXLo']
 CATS    = ['LepHiT']
 MASSESA = ['12']+[str(iMA*5) for iMA in range(3,13)]
-#MASSESA = ['12']
-#FITS    = ['2s2C']
-FITS    = ['1x1C']
+FITS    = ['1x1C','2s2C']
 MIN_PTS = 100  ## Minimum number of points the scan should contain
 
 eos_from_config = [eos for eos in (open('config/user.config','r')).readlines() if eos.startswith('EOS_DIR=')]
@@ -29,7 +26,7 @@ loc_from_config = [loc for loc in (open('config/user.config','r')).readlines() i
 EOS_DIR = eos_from_config[0].replace('EOS_DIR=','').replace('\n','')
 LOC_DIR = loc_from_config[0].replace('LOC_DIR=','').replace('\n','')
 IN_DIR  = EOS_DIR+'/ToyStudies/'+DATE
-RND_DIR = LOC_DIR+'/output/%stoys/Mergecards/%s%srounded' % (DMC, DMC, DMC)
+RND_DIR = LOC_DIR+'/output/%stoys/Mergecards/%s%srounded/%s' % (DMC, DMC, DMC, DATE)
 OUT_DIR = LOC_DIR+'/figures/MultiDimFit/'+DATE+'/'+YEAR
 
 if not os.path.exists(OUT_DIR):
@@ -57,11 +54,12 @@ def get_parab_min(ABC):
 for cat in CATS:
     for mA in MASSESA:
         for fit in FITS:
+            if (cat.startswith('Lep') != fit.startswith('1')): continue
             algo = 'MultiDimFit'
             base = 'higgsCombine.test'+algo
             suff = 'MultiDimFit.mH120.root'
             file_pattern = '%s/%s/%s/%s.%s.mA_%s.%s%s.%stoy*.%s' % (IN_DIR, cat, YEAR, base, cat, mA, fit, SIGINJ, DMC, suff)
-            rnd_pattern  = '%s/%s.%s.mA_%s.%s%s.%s%srounded.%s' % (RND_DIR, base, cat, mA, fit, SIGINJ, DMC, DMC, suff)
+            rnd_pattern  = '%s/%s/%s/%s.%s.mA_%s.%s%s.%s%srounded.%s' % (RND_DIR, cat, YEAR, base, cat, mA, fit, SIGINJ, DMC, DMC, suff)
             in_files  = glob.glob(file_pattern)
             rnd_files = glob.glob(rnd_pattern)
             if doSigInj:
@@ -129,10 +127,10 @@ for cat in CATS:
                     print(fName)
                     continue
 
-                if val[0]['r'] != 0 or val[1]['r'] == 0:
+                if val[0]['r'] > 0.00001 or val[1]['r'] < 0.00001:
                     val = val[1:]  ## Remove first element (either 'best-fit' or just 'middle r', not consistent)
-                rCut = 0.01 if int(mA) < 22 else (0.02 if int(mA) < 42 else (0.03 if int(mA) < 63 else 0.01))
-                if val[0]['r'] > rCut:
+                rCut = 0.0002 if int(mA) <= 20 else (0.0005 if int(mA) <= 40 else 0.001)
+                if val[0]['r'] > 5*rCut+0.00001:
                     print('\nERROR!!! File %d, first "r" = %.4f, not near 0. Code assumes scan starts from ~0. Skipping!' % (iFile, val[0]['r']))
                     print(fName)
                 ## Double check injected signal
@@ -145,9 +143,10 @@ for cat in CATS:
                 sort_dNLL[:]['pull'] = np.sqrt(2*sort_dNLL[:]['NLL'])
 
                 parab_min = sort_dNLL[0:7]  ## Lowest 7 points in NLL parabola
+                #print(['%.5f' % (parab_min[i]['r']) for i in range(7)])
                 min_NLL_pt = [-99.,-99.]  ## Best-fit [r, NLL]
                 min_NLL_err = [0,0]  ## Uncertainties on best-fit [r, NLL]
-                if parab_min[0]['r'] == 0:
+                if parab_min[0]['r'] < 0.00001:
                     min_NLL_pt = [0.0, parab_min[0]['NLL']]
                 else:
                     pIdx = [-99,-99,0,-99,-99]  ## 5 points on parabola to infer minimum
@@ -184,11 +183,11 @@ for cat in CATS:
                     ## Adjust values based on best-fit r / NLL
                     sort_dNLL[:]['NLL']  = sort_dNLL[:]['NLL'] - min_NLL_pt[1]
                     sort_dNLL[:]['pull'] = np.sqrt(2*sort_dNLL[:]['NLL'])
-                ## End conditional: if parab_min[0]['r'] == 0 / else
+                ## End conditional: if parab_min[0]['r'] < 0.00001 / else
 
                 ## Create new array sorted by r, starting from the updated dNLL-sorted array
                 sort_r = np.sort(sort_dNLL, order='r')
-                if sort_r[0]['r'] > rCut:
+                if sort_r[0]['r'] > 5*rCut+0.00001:
                     print('\nERROR! Lowest "r" value = %.4f, not ~0. Skipping!' % sort_r[0]['r'])
                     continue
                 ## Find point corresponding to injected signal
@@ -200,7 +199,8 @@ for cat in CATS:
                 ## Fill best-fit and r=0 and r=inj value arrays
                 new_bst_pt = np.array([min_NLL_pt[0], min_NLL_err[0], 0.0, min_NLL_err[1], 0.0, np.sqrt(2*min_NLL_err[1])], dtype=fit_keys)
                 bst_pt = np.append(bst_pt, np.array([(min_NLL_pt[0], min_NLL_err[0], 0, min_NLL_err[1], 0, np.sqrt(2*min_NLL_err[1]))], dtype=fit_keys))
-                if (sort_r[0]['r'] == 0):
+                #print('File %d filling bst_pt = %.6f' % (iFile, min_NLL_pt[0]))
+                if (sort_r[0]['r'] < 0.00001):
                     zro_pt = np.append(zro_pt, np.array([(0, 0, sort_r[0]['NLL'], 0, np.sqrt(2*sort_r[0]['NLL']), 0)], dtype=fit_keys))
                     if VERBOSE:
                         print('File %d r = 0 has NLL = %.5f (%.3f sigma)' % (iFile, sort_r[0]['NLL'], np.sqrt(2*sort_r[0]['NLL'])))
