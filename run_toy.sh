@@ -4,11 +4,11 @@ iToy=$1       ## Toy index
 TOYSOURCE=$2  ## Data or MC
 iCat=$3       ## Category to run
 iMA=$4        ## GEN a boson mass (must be in masses in htoaato4b_mctoy.py)
-FITS=($5)     ## Fit to use, e.g. 1x1C or 2s2C, or NxM for "Comb". Can use multiple below.
-sInj=$6       ## Whether to inject signal (True/true/T/1 vs. False/false/F/0)
+YEAR=$5       ## Run2, 20XX, 2018, 2017, 2016
+FITS=($6)     ## Fit to use, e.g. 1x1C or 2s2C, or NxM for "Comb". Can use multiple below.
+sInj=$7       ## Whether to inject signal (True/true/T/1 vs. False/false/F/0)
 NTOYGOF=100   ## Number of toys 2DAlphabet will run for goodness-of-fit test
-YEAR="Run2"
-DATE="2025_07_25"
+DATE="2025_08_15"
 MHREG="pnet"
 MAREG="34a"
 #FITS=("0x0" "1d1C" "1x1C" "2d2C" "2s2C" "2x2C")  ## Needs to be a subset of FITLIST in htoaato4b_mctoy.py
@@ -42,7 +42,6 @@ if [ "$SIGINJ" = true ]; then
     fi
 fi
 
-
 ## Output EOS directory to move ROOT files (avoid disk quota issues)
 source config/user.config  ## Loads USER, LOC_DIR, and EOS_DIR
 EOS_OUT_DIR="${EOS_DIR}/ToyStudies/${DATE}/${iCat}/${YEAR}/"
@@ -52,6 +51,24 @@ if [ ! -d ${EOS_OUT_DIR} ]; then
     mkdir -p ${EOS_OUT_DIR}
 fi
 
+## Also create temporary EOS directory to run from
+## Avoids afs read/write volume issues when running Condor batch jobs
+if [[ ${PWD} != ${LOC_DIR} ]]; then
+    echo "PWD = ${PWD}"
+    echo "LOC_DIR = ${LOC_DIR}"
+    echo "These should be the same! Quitting."
+    exit
+else
+    echo "Making temporary running directory:"
+    EOS_TMP_DIR="${EOS_OUT_DIR}tmp_${iToy}_${TOYSOURCE}_${iCat}_${iMA}_${FITS[0]}_${sInj}/"
+    echo "${EOS_TMP_DIR}"
+    mkdir -p ${EOS_TMP_DIR}
+    cd ${EOS_TMP_DIR}
+    mkdir config
+    cp ${LOC_DIR}/config/user.config config/
+fi
+
+## Set parameters
 sToy="toy${iToy}"
 ## Toy "-1" corresponds to MCrounded or Datarounded, "-2" corresponds to Data
 if [ "${iToy}" == "-1" ]; then
@@ -74,9 +91,15 @@ fi
 if [ "$iToy" -ge "0" ]; then
     INDIR="${EOS_DIR}/${INDIR}"
     OUTDIR="${EOS_DIR}/${OUTDIR}"
+else
+    INDIR="${LOC_DIR}/${INDIR}"
+    OUTDIR="${LOC_DIR}/${OUTDIR}"
+    ## Copy jsons to EOS_TMP_DIR
+    mkdir -p jsons/toys/${DATE}/${iCat}/
+    cp -r ${LOC_DIR}/jsons/toys/${DATE}/${iCat}/${YEAR} jsons/toys/${DATE}/${iCat}/
 fi
-if [ ! -d ${OUTDIR} ]; then
-    mkdir -p ${OUTDIR}
+if [ ! -d ${OUTDIR}/${DATE}/${iCat}/${YEAR}/ ]; then
+    mkdir -p ${OUTDIR}/${DATE}/${iCat}/${YEAR}/
 fi
 
 
@@ -91,12 +114,12 @@ WP="UNDEF"
 if [[ $iCat == "gg0l"* || $iCat == "VBF"* || $iCat == "HadWP40"* ]]; then
     WP="WP40"
 fi
-if [[ $iCat == "Lep"* || $iCat == "Vjj"* || $iCat == "tt0l"* || $iCat == "HadXLo" || $iCat == "HadWP60"* ]]; then
+if [[ $iCat == "Lep"* || $iCat == "Vjj"* || $iCat == "tt0l"* || $iCat == "HadWP60"* ]]; then
     if [[ $iCat != "LepHadComb" ]]; then
 	WP="WP60"
     fi
 fi
-if [[ $iCat == "VVBFjj" ]]; then
+if [[ $iCat == "HadX"* || $iCat == "VVBFjj" ]]; then
     WP="WP4060"
 fi
 
@@ -134,22 +157,28 @@ fi
 
 
 ## Make toys for each category
-if [[ $iCat != *"Comb"* ]]; then
+FIT_DIR="fits_${iCat}_Htoaato4b_${MHREG}_${MAREG}_${WP}_${FITS[0]}_${YEAR}_${sToy}${SIN}"
+if [[ $iCat != *"Comb"* && $YEAR != "20XX" ]]; then
     if [ "$SIGINJ" = true ]; then
     	echo ">>>>>>>>>> Making Toy #${iToy} in category ${iCat} (${WP}) [${SIN:1}]"
-    	python3 htoaato4b_mctoy.py "${iToy}" "${iCat}" "${TOYSOURCE}" "${SIN:1}"
+    	python3 ${LOC_DIR}/htoaato4b_mctoy.py "${iToy}" "${iCat}" "${TOYSOURCE}" "${YEAR}" "${SIN:1}"
     	echo ">>>>>>>>>> Made Toy #${iToy} in category ${iCat} (${WP}) [${SIN:1}]"
     else
 	## If not injecting signal, only need one 2DAlphabet directory for all mass points
-    	cat_card="${INDIR}/fits_${iCat}_Htoaato4b_${MHREG}_${MAREG}_${WP}_${FITS[0]}_${YEAR}_${sToy}${SIN}/mA_${iMA}_area/card.txt"
+    	cat_card="${INDIR}/${FIT_DIR}/mA_${iMA}_area/card.txt"
 	echo "Looking for ${cat_card}"
 	if [[ $iMA == "12" || ! -f ${cat_card} ]]; then
     	    echo ">>>>>>>>>> Making Toy #${iToy} in category ${iCat} (${WP})"
-    	    python3 htoaato4b_mctoy.py "${iToy}" "${iCat}" "${TOYSOURCE}"
+    	    python3 ${LOC_DIR}/htoaato4b_mctoy.py "${iToy}" "${iCat}" "${TOYSOURCE}" "${YEAR}"
     	    echo ">>>>>>>>>> Made Toy #${iToy} in category ${iCat} (${WP})"
 	else
 	    echo "Found it!"
 	fi
+    fi
+    ## If running rounded or real data, copy fits workspace back to local area
+    if [[ "$iToy" -le "0" && -d output/${TOYSOURCE}toys/${FIT_DIR} ]]; then
+	echo "cp -r output/${TOYSOURCE}toys/${FIT_DIR} ${INDIR}/"
+	cp -r output/${TOYSOURCE}toys/${FIT_DIR} ${INDIR}/
     fi
 fi
 
@@ -162,14 +191,31 @@ for iFit in "${FITS[@]}"; do
 
     in_cards=""
     for jCat in "${subCats[@]}"; do
-    	new_card="${INDIR}/fits_${jCat}_Htoaato4b_${MHREG}_${MAREG}_${WP}_${iFit}_${YEAR}_${sToy}${SIN}/mA_${iMA}_area/card.txt"
-	if test -f ${new_card}; then
-    	    in_cards="${in_cards} ${new_card}"
+	if [ "${YEAR}" == "20XX" ]; then
+	    for iYear in "2016" "2017" "2018"; do
+    		new_card="${INDIR}/fits_${jCat}_Htoaato4b_${MHREG}_${MAREG}_${WP}_${iFit}_${iYear}_${sToy}${SIN}/mA_${iMA}_area/card.txt"
+		if test -f ${new_card}; then
+    		    in_cards="${in_cards} ${new_card}"
+		else
+		    echo "Could not find input card:"
+		    echo ${new_card}
+		    in_cards=""
+		    break
+		fi
+	    done
 	else
-	    echo "Could not find input card:"
-	    echo ${new_card}
-	fi
-    done
+    	    new_card="${INDIR}/fits_${jCat}_Htoaato4b_${MHREG}_${MAREG}_${WP}_${iFit}_${YEAR}_${sToy}${SIN}/mA_${iMA}_area/card.txt"
+	    if test -f ${new_card}; then
+    		in_cards="${in_cards} ${new_card}"
+	    else
+		echo "Could not find input card:"
+		echo ${new_card}
+		in_cards=""
+		break
+	    fi
+	fi ## End conditional: if [ "${YEAR}" == "20XX" ] / else
+    done ## End loop: for jCat in "${subCats[@]}"
+
     if [[ $iCat == "LepHadComb" ]]; then
     	in_cards=""
     	for lCat in "${subCatsLep[@]}"; do
@@ -252,8 +298,8 @@ for iFit in "${FITS[@]}"; do
     ## Combine cards, output to workspace
     echo "combineCards.py $in_cards > ${OUTDIR}/combined_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.txt"
     combineCards.py $in_cards > ${OUTDIR}/combined_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.txt
-    echo "text2workspace.py --out ${OUTDIR}/workspace_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.root"
-    text2workspace.py ${OUTDIR}/combined_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.txt --for-fits --no-wrappers --optimize-simpdf-constraints=cms --X-pack-asympows --use-histsum  --out ${OUTDIR}/workspace_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.root
+    # echo "text2workspace.py --out ${OUTDIR}/workspace_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.root"
+    # text2workspace.py ${OUTDIR}/combined_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.txt --for-fits --no-wrappers --optimize-simpdf-constraints=cms --X-pack-asympows --use-histsum  --out ${OUTDIR}/workspace_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.root
 
     ## Set blinding options
     runOpt="--run=both"
@@ -302,11 +348,14 @@ for iFit in "${FITS[@]}"; do
 	echo "mv *.test*.${iCat}.mA_${iMA}.${iFit}${SIN}.${dmToy}*root ${EOS_OUT_DIR}"
 	mv *.test*.${iCat}.mA_${iMA}.${iFit}${SIN}.${dmToy}*root ${EOS_OUT_DIR}
     else
-	echo "mv *.test*.${iCat}.mA_${iMA}.${iFit}${SIN}.${dmToy}*root ${OUTDIR}"
-	mv *.test*.${iCat}.mA_${iMA}.${iFit}${SIN}.${dmToy}*root ${OUTDIR}
+	echo "mv *.test*.${iCat}.mA_${iMA}.${iFit}${SIN}.${dmToy}*root ${OUTDIR}/${DATE}/${iCat}/${YEAR}/"
+	mv *.test*.${iCat}.mA_${iMA}.${iFit}${SIN}.${dmToy}*root ${OUTDIR}/${DATE}/${iCat}/${YEAR}/
     fi
     echo "     <<<<< All done with mA = ${iMA}"
-	
+
+    cd ${LOC_DIR}
+    rm -rf ${EOS_TMP_DIR}
+
     # Calculate elapsed time
     ELAPSED=$((SECONDS - START_TIME))
     hours=$((ELAPSED / 3600))
