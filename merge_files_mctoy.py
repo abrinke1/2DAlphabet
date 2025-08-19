@@ -23,7 +23,7 @@ MASSESA  = ['12']+[str(mA*5) for mA in range(3,13)]
 #MAREGS   = ['34a', '34d', '4a']
 MHREGS   = ['pnet']
 MAREGS   = ['34a']
-DATE     = '2025_07_25'
+DATE     = '2025_08_15'
 LUMIS    = {'2016preVFP': 19.52, '2016postVFP': 16.81, '2017': 41.48, '2018': 59.83}
 eos_from_config = [eos for eos in (open('config/user.config','r')).readlines() if eos.startswith('EOS_DIR=')]
 EOS_DIR = eos_from_config[0].replace('EOS_DIR=','').replace('\n','')
@@ -39,26 +39,26 @@ if not os.path.exists('logs'):
 
 
 IS_HAD,IS_LEP = False,False
-for pref in ['Had','gg0l','VBFjj','Vjj','VVBFjj','tt0l']:
+for pref in ['Had','gg0l','VBFjj','Vjj','VVBFjj','tt0l0b']:
     if CAT_OUT.startswith(pref):
         IS_HAD = True
-for pref in ['Lep','Zll','Wlv','ttb','Zvv']:
+for pref in ['Lep','Zll','Wlv','ttb','Zvv','tt0l1b']:
     if CAT_OUT.startswith(pref):
         IS_LEP = True
 assert (IS_HAD or IS_LEP), 'CAT_OUT %s not valid!!! Quitting.' % CAT_OUT
+## Some super-categories combine sub-categories with WP40 (e.g. VBFjj) and WP60 (e.g. Vjj)
+DO_WP4060 = (CAT_OUT == 'VVBFjj' or CAT_OUT.startswith('HadX'))
 
 print('\nRunning merge_files_mctoy.py for %s' % CAT_OUT)
 if IS_HAD:
-    if CAT_OUT.endswith('Incl') and not CAT_OUT == 'tt0lIncl':
-        CAT_INS = [CAT_OUT.replace('Incl','')+sub for sub in ['Lo','Hi']]
-    if CAT_OUT == 'gg0lV':
-        CAT_INS = ['gg0lLo','gg0lHi','VBFjjLo']
     if CAT_OUT == 'gg0lVLo':
-        CAT_INS = ['gg0lLo','VBFjjLo']
-    if CAT_OUT == 'VVBFjj':
-        CAT_INS = ['VBFjjHi','VjjHi']
+        CAT_INS = ['gg0lLo','VBFjjLoPtLo']
+    if CAT_OUT == 'gg0lVHi':
+        CAT_INS = ['gg0lHi','VBFjjLoPtHi']
+    if CAT_OUT == 'HadXHi':
+        CAT_INS = ['VBFjjHiPtHi','VjjHi400']
     if CAT_OUT == 'HadXLo':
-        CAT_INS = ['VjjLo','tt0l0b']
+        CAT_INS = ['VBFjjHiPtLo','VjjLo400','tt0l0b']
     for cat in CAT_INS:
         CATS_IN[cat] = {}
         CATS_IN[cat]['sigs'] = [sig+'toaato4b' for sig in HADSIGS]
@@ -96,8 +96,6 @@ elif IS_LEP:
         if CAT_OUT == 'LepLoH': CAT_INS.remove('ZvvLo')
         if CAT_OUT == 'LepHiH': CAT_INS.append('ZvvLo')
     ## End conditional: if CAT_OUT.startswith('Lep')
-    elif CAT_OUT.endswith('Incl'):
-        CAT_INS = [CAT_OUT.replace('Incl','')+sub for sub in ['Lo','Hi']]
     for cat in CAT_INS:
         CATS_IN[cat] = {}
         CATS_IN[cat]['sigs'] = [sig+'toaato4b' for sig in LEPSIGS]
@@ -105,7 +103,8 @@ elif IS_LEP:
         if cat.startswith('Zll') or cat.startswith('ttbll'):
             CATS_IN[cat]['bkgs'] = ['Zll','ZZ','TT2l','STop_tW_12l','STbar_tW_12l','MC']  ## Put 'MC' at the end!
         elif cat.startswith('Wlv') or (cat.startswith('tt') and cat.endswith('lv')):
-            CATS_IN[cat]['bkgs'] = ['Zll','ZZ','TT2l','STop_tW_12l','STbar_tW_12l','Wlv','TT1l','ST_s_1l','STop_t','STbar_t','QCD','MC']
+            CATS_IN[cat]['bkgs'] = ['Zll','ZZ','TT2l','STop_tW_12l','STbar_tW_12l','Wlv','TT1l','ST_s_1l','STop_t','STbar_t']
+            CATS_IN[cat]['bkgs'] += (['MC'] if cat.startswith('ttbblv') else ['QCD','MC'])  ## Negative QCD yields in ttbblv
         elif cat.startswith('Zvv'):
             CATS_IN[cat]['bkgs'] = ['Wqq','Zqq','TT0l','TT1l','Zvv','Zll','Wlv','ST_s_1l','STop_t','STbar_t','STop_tW_Incl','STbar_tW_Incl','WW','WZ','ZZ','MC']
         elif cat == 'tt0l1b':
@@ -124,15 +123,11 @@ OUT_DIRS = {}
 WP_CUTS = {}
 for cat in [CAT_OUT]+CAT_INS:
     OUT_DIRS[cat] = EOS_DIR+'/plots/'+DATE+'/'+cat+'/'+YEAR+'/'
-    #if cat.startswith('gg0l') or cat.startswith('VBFjj'):
-    if cat.startswith('gg0l'):
-        WP_CUTS[cat] = ['WP40', 'WP60']  ## Use WP60 to model WP40
-    elif cat.startswith('VBFjj'):
-        WP_CUTS[cat] = ['WP40']  ## No WP60 for VBFjj available currently
-    elif cat == 'VVBFjj':
-        #WP_CUTS[cat] = ['WP4060','WP60']  ## VBFjjHi has WP60 to model WP40, Vjj only WP60
-        WP_CUTS[cat] = ['WP4060']  ## VBFjjHi currently has only WP40, Vjj only WP60
-    elif cat == 'VjjHi' and CAT_OUT == 'VVBFjj':
+    if cat.startswith('gg0l') or cat.startswith('VBFjj'):
+        WP_CUTS[cat] = ['WP40', 'WP60']  ## Use WP60 background MC to model WP40
+    elif (cat == 'VVBFjj' or cat.startswith('HadX')):
+        WP_CUTS[cat] = ['WP4060','WP60']  ## VBFjj has WP60 to model WP40, Vjj only has WP60
+    elif cat.startswith('Vjj') and DO_WP4060:
         WP_CUTS[cat] = ['WP40','WP60']  ## Create "false" WP40 (really still WP60) to add to VBFjj WP40
     else:
         WP_CUTS[cat] = ['WP60']  ## Default WP for most categories
@@ -258,20 +253,19 @@ def main():
                                 catIn = cat
                                 ## VBFjj category histograms currently named just VBF
                                 if cat.startswith('VBFjj'):
-                                    catIn = cat.replace('VBFjj','VBF')
+                                    catIn = cat.replace('VBFjj','VBF').replace('Pt','PT')
                                 h_in_name_read  = '%s_%s_%s_%s_%s_%s_%s_%s' % (catIn, samp, YEAR, mHr, mAr, wp, pf, syst)
                                 h_in_name_write = '%s_%s_%s_%s_%s_%s_%s_%s' % (cat, samp, YEAR, mHr, mAr, wp, pf, syst)
-                                #wp_out = 'WP4060' if (CAT_OUT == 'VVBFjj' and wp == 'WP40') else wp
-                                wp_out = 'WP4060' if CAT_OUT == 'VVBFjj' else wp
+                                wp_out = 'WP4060' if (DO_WP4060 and wp == 'WP40') else wp
                                 assert (wp_out in WP_CUTS[CAT_OUT]), '\nERROR!!! %s wp = %s, wp_out = %s, not in WP_CUTS[%s]. Quitting.' % (cat, wp, wp_out, CAT_OUT)
                                 h_out_base = '%s_%s_%s_%s_%s_%s_%s' % (CAT_OUT, samp, YEAR, mHr, mAr, wp_out, pf)
                                 h_out_name = h_out_base+'_'+syst
                                 if syst == 'Nom' and h_out_name in h_outs.keys():
                                     firstHist = False
                                     h_out_nom = h_outs[h_out_name].Clone('h_out_nom')
-                                ## No real VjjHi WP40; use WP60 to add to VBFjjHi WP40 in VVBFjj
-                                if wp == 'WP40' and cat == 'VjjHi':
-                                    h_in_name_read = h_in_name_read.replace('_'+wp+'_', '_WP60_')
+                                ## No real VjjHi WP40; use WP60 to add to VBFjj WP40 in VVBFjj or HadX
+                                if wp == 'WP40' and cat.startswith('Vjj') and DO_WP4060:
+                                    h_in_name_read = h_in_name_read.replace('_WP40_','_WP60_')
 
                                 ## Get sums from previously accessed and saved histograms
                                 if samp == 'SumMC':
@@ -307,7 +301,7 @@ def main():
                                     if samp.startswith('QCD'):
                                         h_max = h_in.GetMaximum()
                                         h_int = h_in.Integral()
-                                        if h_max > 0.05*h_int:
+                                        if h_max > 0.05*h_int and h_int > 0 and h_max > math.sqrt(h_int):
                                             if VERBOSE:
                                                 print('\n***** MANUAL ADJUSTMENT TO %s in %s!!! *****' % (samp, cat))
                                                 print('%s has max %.2f, integral %.2f (%.2f%%)' % (h_in_name_read, h_max, h_int, 100*h_max/h_int))
@@ -316,21 +310,25 @@ def main():
                                             for iX in range(1, nX+1):
                                                 for iY in range(1, nY+1):
                                                     h_bin = h_in.GetBinContent(iX,iY)
-                                                    if h_bin < 0.05*h_int: continue
-                                                    h_area = h_in.Integral(iX-3,iX+3,iY-3,iY+3) - h_bin
+                                                    if h_bin < 0.05*h_int or h_bin < math.sqrt(h_int): continue
+                                                    h_area = h_in.Integral(iX-3,iX+3,iY-3,iY+3)
+                                                    h_new  = max((h_area+math.sqrt(h_area))/48.0, (h_int+math.sqrt(h_int))/(nX*nY))
                                                     if VERBOSE:
                                                         print('Bin (%d,%d) = %.2f +/- %.2f' % (iX, iY, h_bin, h_in.GetBinError(iX,iY)))
 
                                                         print('7x7 surrounding integral is %.2f' % h_area)
-                                                        print('Setting (%d,%d) to %.3f' % (iX, iY, max(h_area/48.0, h_int/(nX*nY))))
-                                                    h_in.SetBinContent(iX,iY, h_area/48.0)
-                                                    h_in.SetBinError(iX,iY, h_area/48.0)
-                                                    spikes[cat][samp][wp][mHr][mAr][pf]['name'] = h_in_name_write
-                                                    spikes[cat][samp][wp][mHr][mAr][pf]['iX'] = iX
-                                                    spikes[cat][samp][wp][mHr][mAr][pf]['iY'] = iY
-                                                    spikes[cat][samp][wp][mHr][mAr][pf]['int'] = h_int
-                                                    spikes[cat][samp][wp][mHr][mAr][pf]['Ni'] = h_bin
-                                                    spikes[cat][samp][wp][mHr][mAr][pf]['Nf'] = max(h_area/48.0, h_int/(nX*nY))
+                                                        print('Setting (%d,%d) to %.3f' % (iX, iY, h_new))
+                                                    h_in.SetBinContent(iX,iY, h_new)
+                                                    h_in.SetBinError(iX,iY, h_new)
+                                                    if len(spikes[cat][samp][wp][mHr][mAr][pf].keys()) == 0:
+                                                        for key in ['name','iX','iY','int','Ni','Nf']:
+                                                            spikes[cat][samp][wp][mHr][mAr][pf][key] = []
+                                                    spikes[cat][samp][wp][mHr][mAr][pf]['name'].append(h_in_name_write)
+                                                    spikes[cat][samp][wp][mHr][mAr][pf]['iX'].append(iX)
+                                                    spikes[cat][samp][wp][mHr][mAr][pf]['iY'].append(iY)
+                                                    spikes[cat][samp][wp][mHr][mAr][pf]['int'].append(h_int)
+                                                    spikes[cat][samp][wp][mHr][mAr][pf]['Ni'].append(h_bin)
+                                                    spikes[cat][samp][wp][mHr][mAr][pf]['Nf'].append(h_new)
                                                 ## End loop: for iY in range(1, nY+1)
                                             ## End loop: for iX in range(1, nX+1)
                                         ## End conditional: if h_max > 0.05*h_int
@@ -456,12 +454,11 @@ def main():
                                     if cat != CAT_OUT:
                                         out_file3.cd()
                                         h_ins[h_in_name].Write()
-                                    if VERBOSE or 'Sum' in samp: print('Wrote out %s' % h_in_name)
-                                    if VERBOSE or 'Sum' in samp: print('  * Integral = %.2f' % h_ins[h_in_name].Integral())
+                                    if VERBOSE or 'Data' in samp or 'SumMC' in samp or (pf == 'Pass' and syst == 'Nom' and 'SumHtoaato4b' in samp and ('_mA_12' in samp or '_mA_30' in samp or '_mA_60' in samp)):
+                                        print('Wrote out %s (integral = %.2f)' % (h_in_name, h_ins[h_in_name].Integral()))
                                 ## End conditional: if syst in in_systs
                                 ## Write out summed output histogram (overwrite if needed)
-                                #wp_out = 'WP4060' if (CAT_OUT == 'VVBFjj' and wp == 'WP40') else wp
-                                wp_out = 'WP4060' if CAT_OUT == 'VVBFjj' else wp
+                                wp_out = 'WP4060' if (DO_WP4060 and wp == 'WP40') else wp
                                 assert (wp_out in WP_CUTS[CAT_OUT]), '\nERROR!!! %s wp = %s, wp_out = %s, not in WP_CUTS[%s]. Quitting.' % (cat, wp, wp_out, CAT_OUT)
                                 h_out_name = '%s_%s_%s_%s_%s_%s_%s_%s' % (CAT_OUT, samp, YEAR, mHr, mAr, wp_out, pf, syst)
                                 out_file.cd()
@@ -515,8 +512,9 @@ def main():
                         for pf in spikes[cat][samp][wp][mHr][mAr].keys():
                             spk = spikes[cat][samp][wp][mHr][mAr][pf]
                             if len(spk.keys()) > 0:
-                                print('%s %s %s %s %s %s (%s)' % (cat, samp, wp, mHr, mAr, pf, spk['name']))
-                                print('Integral = %.2f, (%d,%d) = %.3f  --> %.3f' % (spk['int'], spk['iX'], spk['iY'], spk['Ni'], spk['Nf']))
+                                for i in range(len(spk['name'])):
+                                    print('%s %s %s %s %s %s (%s)' % (cat, samp, wp, mHr, mAr, pf, spk['name'][i]))
+                                    print('Integral = %.2f, (%d,%d) = %.3f  --> %.3f' % (spk['int'][i], spk['iX'][i], spk['iY'][i], spk['Ni'][i], spk['Nf'][i]))
     ## End loop: for cat in spikes.keys()
 
 
