@@ -23,7 +23,8 @@ NTOY    = 100  ## Number of toys for goodness-of-fit (GoF) test
 ITOY    = int(sys.argv[1]) ## Specific toy to run; -1 is MCrounded or Datarounded, -2 is real data
 CAT     = sys.argv[2] ## Event selection category, e.g. gg0lHi, LepLo, VBFjjIncl ...
 TOYSOURCE = str(sys.argv[3]) ## MC, Data
-SIGINJ = '' if len(sys.argv) < 5 else str(sys.argv[4])  ## mA_XX_sigBr_YYY
+YEAR    = str(sys.argv[4]) ## 2016, 2017, 2018, Run2
+SIGINJ = '' if len(sys.argv) < 6 else str(sys.argv[5])  ## mA_XX_sigBr_YYY
 eos_from_config = [eos for eos in (open('config/user.config','r')).readlines() if eos.startswith('EOS_DIR=')]
 EOS_DIR = eos_from_config[0].replace('EOS_DIR=','').replace('\n','')
 OUT_DIR = 'output' if ITOY < 0 else EOS_DIR+'/output'
@@ -36,8 +37,7 @@ if SIGINJ.startswith('mA_'):
     MASSA = SIGINJ[3:5]
     assert MASSA in MASSESA, '\nERROR!!! Invalid mass %s from %s. Quitting.' % (MASSA, SIGINJ)
     MASSESA = [MASSA]
-YEAR    = 'Run2'    ## Data year
-DATE    = '2025_07_25'
+DATE    = '2025_08_15'
 PATH    = EOS_DIR+'/plots/'+DATE+'/'+CAT+'/'+YEAR
 UseMCToy   = (TOYSOURCE == 'MC')
 UseDataToy = (TOYSOURCE == 'Data')
@@ -73,9 +73,9 @@ elif CAT.startswith('VBFjj'):
 elif CAT == 'VVBFjj':
     WP = 'WP4060'
     FITLIST = ['2s2C']
-elif CAT == 'HadXLo':
-    WP = 'WP60'
-    FITLIST = ['1x1C']
+elif CAT.startswith('HadX'):
+    WP = 'WP4060'
+    FITLIST = ['2s2C']
 
 # elif CAT.startswith('Vjj'):
 #     #FITLIST = ['0x0','0x0smr','1d1C']
@@ -137,7 +137,7 @@ def _select_signal(row, args):
         else:
             return False
     elif 'Background_' in row.process:
-        if row.process == CAT+'Background_'+poly_order:
+        if row.process == CAT+YEAR+'Background_'+poly_order:
             return True
         else:
             return False
@@ -169,6 +169,7 @@ def _working_json():
         working_json = working_json.replace('.json', '_'+SIGINJ+'.json')
     working_json = working_json.replace('.json', '_%s_%s.json' % (MHREG, MAREG))
     if ITOY >= 0: working_json = EOS_DIR+'/'+working_json
+    print('\n*** Using working_json = %s ***\n' % working_json)
     return working_json
         
 def _load_rpf_smear(fitN):
@@ -314,7 +315,7 @@ def test_make(SRorCR, fitN):
         # * Definitely consider not using "forcePositive"
         # * Definitely consider disabling fix to constant 0, especially for low-stats categories
         # * Not that it should matter, but consider scaling default bin value to yield/nBins instead of 5.
-        fail_name = CAT+'Background_'+fl
+        fail_name = CAT+YEAR+'Background_'+fl
         qcd_f = BinnedDistribution(
                     fail_name, qcd_hists[fl],
                     binning_f, constant=False,
@@ -325,7 +326,7 @@ def test_make(SRorCR, fitN):
         # We specify the name of the process, the region it lives in, and the object itself.
         # The process is assumed to be a background and colored yellow but this can be changed
         # with optional arguments.
-        twoD.AddAlphaObj(CAT+'Background', fl, qcd_f)
+        twoD.AddAlphaObj(CAT+YEAR+'Background', fl, qcd_f)
 
         # As global variables, we've defined some different transfer function (TF) options.
         # We only want to include one of these at the time of fitting but we want to construct
@@ -359,7 +360,7 @@ def test_make(SRorCR, fitN):
             smear_nuis = {}
             smear_funcs = {}
             for shift in ['L','R','D','U']:
-                sf_name = '%sBackground_smear%s' % (CAT, shift)
+                sf_name = '%sBackground_smear%s' % (CAT+YEAR, shift)
                 sp_name = sf_name+'_par0'
                 ## Create "nuisances" similar to _createFuncVars in alphawrap.py
                 smear_nuis[shift] = {'name': sp_name,
@@ -384,7 +385,7 @@ def test_make(SRorCR, fitN):
         # Note that we have unique process names so they are identifiable
         # but we give them different titles so that they look pretty in
         # the final plot legends. First two args are just strings (process and region).
-        twoD.AddAlphaObj(CAT+'Background_'+fitN, ps, qcd_p, title=CAT+'Background')
+        twoD.AddAlphaObj(CAT+YEAR+'Background_'+fitN, ps, qcd_p, title=CAT+YEAR+'Background')
 
     ## End loop: for ps, fl in [['Pass', 'Fail'] for r in twoD.ledger.GetRegions() if r == 'Pass']
 
