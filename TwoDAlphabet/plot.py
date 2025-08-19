@@ -1,5 +1,6 @@
 import glob
 import ROOT, os, warnings, pandas, math, time
+from array import array
 from PIL import Image
 from TwoDAlphabet.helpers import set_hist_maximums, execute_cmd, cd
 from TwoDAlphabet.binning import stitch_hists_in_x, convert_to_events_per_unit, get_min_bin_width
@@ -122,8 +123,10 @@ class Plotter(object):
                 else: blinding = []
             else: blinding = []
 
-            self.slices['x'][region] = {'vals': binning.xSlices,'idxs':binning.xSliceIdx}
-            self.slices['y'][region] = {'vals': binning.ySlices,'idxs':binning.ySliceIdx}
+            self.slices['x'][region] = {'vals': binning.xSlices,
+                                        'idxs':{'LOW':binning.xSliceIdx, 'SIG':binning.xSliceIdx, 'HIGH':binning.xSliceIdx}}
+            self.slices['y'][region] = {'vals': binning.ySlices,
+                                        'idxs':{'LOW':binning.ySliceIdxs['LOW'],'SIG':binning.ySliceIdxs['SIG'],'HIGH':binning.ySliceIdxs['HIGH']}}
             
             for process in self.ledger.GetProcesses()+['TotalBkg']:
                 # Skip processes not in this region
@@ -160,11 +163,11 @@ class Plotter(object):
                     if sig == None: raise IOError('Could not find histogram %s in postfitshapes_%s.root'%(sig_name, self.fittag))
                     if high == None: raise IOError('Could not find histogram %s in postfitshapes_%s.root'%(high_name, self.fittag))
 
-                    full = stitch_hists_in_x(out2d_name, binning, [low,sig,high], blinded=blinding if process == 'data_obs' else [])
-                    full.SetMinimum(0)
-                    full.SetTitle('%s, %s, %s'%(proc_title,region,time))
+                    #full = stitch_hists_in_x(out2d_name, binning, [low,sig,high], blinded=blinding if process == 'data_obs' else [])
+                    #full.SetMinimum(0)
+                    #full.SetTitle('%s, %s, %s'%(proc_title,region,time))
 
-                    self.root_out.WriteTObject(full,full.GetName())
+                    #self.root_out.WriteTObject(full,full.GetName())
 
                     # Now do projections using the 2D
                     out_proj_name = '{p}_{r}_{t}_proj{x}{i}'
@@ -173,9 +176,45 @@ class Plotter(object):
 
                         for islice in range(3):
                             hname = out_proj_name.format(p=process,r=region,t=time,x=proj.lower(),i=islice)
-                            start,stop = _get_start_stop(islice,slices['idxs'])
-                            
-                            hslice = getattr(full,'Projection'+proj)(hname,start,stop,'e')
+
+                            hcat = None
+                            hslice = None
+                            if proj == 'Y':
+                                hcat = low if islice == 0 else (sig if islice == 1 else high)
+                                hslice = getattr(hcat,'Projection'+proj)(hname,1,hcat.GetNbinsX(),'e')
+                            else:
+                                start,stop = _get_start_stop(islice,slices['idxs']['LOW'])
+                                hsL = getattr(low,'Projection'+proj)('low',start,stop,'e')
+                                start,stop = _get_start_stop(islice,slices['idxs']['SIG'])
+                                hsS = getattr(sig,'Projection'+proj)('sig',start,stop,'e')
+                                start,stop = _get_start_stop(islice,slices['idxs']['HIGH'])
+                                hsH = getattr(high,'Projection'+proj)('high',start,stop,'e')
+                                bin_edges = []
+                                bin_edges += [hsL.GetBinLowEdge(i) for i in range(1, hsL.GetNbinsX()+1)]
+                                bin_edges += [hsS.GetBinLowEdge(i) for i in range(1, hsS.GetNbinsX()+1)]
+                                bin_edges += [hsH.GetBinLowEdge(i) for i in range(1, hsH.GetNbinsX()+2)]
+                                xbins = array('d', bin_edges)
+                                hslice = ROOT.TH1F(hname, hname, len(bin_edges)-1, xbins)
+                                for i in range(1, hslice.GetNbinsX()+1):
+                                    hst = None
+                                    idx = -1
+                                    if i <= hsL.GetNbinsX():
+                                        hst = hsL
+                                        idx = i
+                                    elif i <= hsL.GetNbinsX()+hsS.GetNbinsX():
+                                        hst = hsS
+                                        idx = i-hsL.GetNbinsX()
+                                    else:
+                                        hst = hsH
+                                        idx = i-hsL.GetNbinsX()-hsS.GetNbinsX()
+                                    assert(hslice.GetBinLowEdge(i) == hst.GetBinLowEdge(idx))
+                                    hslice.SetBinContent(i, hst.GetBinContent(idx))
+                                    hslice.SetBinError(i, hst.GetBinError(idx))
+                                ## End loop: for i in range(1, hslice.GetNbinsX()+1)
+
+                            ## End conditional: if proj == 'X' / else
+
+
                             hslice_title = '%s, %s, %s, %s-%s'%(proc_title,region,time,slices['vals'][islice],slices['vals'][islice+1])
                             hslice = self._format_1Dhist(
                                 hslice, hslice_title,
@@ -184,6 +223,7 @@ class Plotter(object):
                                 color, proc_type)
 
                             self.root_out.WriteTObject(hslice,hslice.GetName())
+                    ## End loop: for proj in ['X','Y']
 
         shapes_file.Close()
         self.root_out.Close()
@@ -795,7 +835,8 @@ def gen_projections(ledger, twoD, fittag, loadExisting=False, prefit=False):
     prefit       (bool): Flag to plot prefit distributions instead of postfit. Defaults to False.
     '''
     plotter = Plotter(ledger, twoD, fittag, loadExisting)
-    plotter.plot_2D_distributions()
+    print('\n\n*** Inside plot.py gen_projections, skipping plot_2D_distributions ***\n\n')
+    #plotter.plot_2D_distributions()
     plotter.plot_projections(prefit)
     plotter.plot_pre_vs_post()
     # plotter.plot_transfer_funcs()

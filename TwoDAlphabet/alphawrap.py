@@ -67,7 +67,7 @@ class Generic2D(object):
         out = Generic2D(name,self.binning,self.forcePositive)
         for cat in _subspace:
             new_cat_name = name+'_'+cat
-            for ybin in range(1,len(self.binning.ybinList)):
+            for ybin in range(1,len(self.binning.ybinByCat[cat])):
                 for xbin in range(1,len(self.binning.xbinByCat[cat])):
                     new_bin_name   = '%s_bin_%s-%s'%(new_cat_name,xbin,ybin)
                     self_bin_name  = new_bin_name.replace(new_cat_name, self.name+'_'+cat)
@@ -95,7 +95,7 @@ class Generic2D(object):
         for cat in _subspace:  ## Typically LOW, SIG, HIGH
             #print('* Now looking at cat = %s' % cat)
             new_cat_name = name+'_'+cat
-            for ybin in range(1,len(self.binning.ybinList)):  ## ybin is mass(a)
+            for ybin in range(1,len(self.binning.ybinByCat[cat])):  ## ybin is mass(a)
                 for xbin in range(1,len(self.binning.xbinByCat[cat])):  ## xbin is mass(H), indexed *within* "cat"
                     new_bin_name   = '%s_bin_%s-%s'%(new_cat_name,xbin,ybin)
                     self_bin_names = {}
@@ -109,11 +109,11 @@ class Generic2D(object):
                     #print('  - %s xbin %d --> [%s %d, %s %d], ybin %d --> [%d, %d]' % (cat, xbin, catL, xbinL, catR, xbinR, ybin, ybinD, ybinU))
                     if (not cat in ['LOW','SIG','HIGH']) or xbin < 1 or ybin < 1 \
                        or xbin >= len(self.binning.xbinByCat[cat]) \
-                       or ybin >= len(self.binning.ybinList):
+                       or ybin >= len(self.binning.ybinByCat[cat]):
                         raise RuntimeError('\n\nIn _manipulateSmear, invald bin %s %d-%d!!! Quitting.' % (cat, xbin, ybin))
                     if ybinD < 1:
                         ybinD = ybin
-                    if ybinU >= len(self.binning.ybinList):
+                    if ybinU >= len(self.binning.ybinByCat[cat]):
                         ybinU = ybin
                     if xbinL < 1:
                         if cat == 'LOW':
@@ -248,7 +248,7 @@ class Generic2D(object):
             obj_name = '%s_%s'%(name if name != '' else self.name, cat)
 
             self.binArgLists[cat] = RooArgList()
-            for ybin in range(1,len(self.binning.ybinList)):
+            for ybin in range(1,len(self.binning.ybinByCat[cat])):
                 for xbin in range(1,len(self.binning.xbinByCat[cat])):
                     bin_name   = '%s_bin_%s-%s'%(cat_name,xbin,ybin)
                     self.binArgLists[cat].add(self.binVars[bin_name])
@@ -256,7 +256,7 @@ class Generic2D(object):
             out_rph[cat] = RooParametricHist2D(
                         obj_name, obj_name,
                         self.binning.xVars[cat],
-                        self.binning.yVar,
+                        self.binning.yVars[cat],
                         self.binArgLists[cat], cat_hist
             )
             out_add[cat] = RooAddition(obj_name+'_norm',obj_name+'_norm',self.binArgLists[cat])
@@ -334,7 +334,7 @@ class ParametricFunction(Generic2D):
 
         for cat in _subspace:
             cat_name = name+'_'+cat
-            for ybin in range(1,len(self.binning.ybinList)):
+            for ybin in range(1,len(self.binning.ybinByCat[cat])):
                 for xbin in range(1,len(self.binning.xbinByCat[cat])):
                     bin_name = '%s_bin_%s-%s'%(cat_name,xbin,ybin)
                     xConst,yConst = self.mappedBinCenter(xbin,ybin,cat)
@@ -416,12 +416,12 @@ class ParametricFunction(Generic2D):
             tuple of floats: x and y values, respectively.
         '''
         x_center = self.binning.GetBinCenterX(xbin,cat)
-        y_center = self.binning.GetBinCenterY(ybin)
+        y_center = self.binning.GetBinCenterY(ybin,cat)
 
         x_min = self.binning.xbinList[0]
-        y_min = self.binning.ybinList[0]
+        y_min = self.binning.ybinByCat[cat][0]
         x_range = self.binning.xbinList[-1] - x_min
-        y_range = self.binning.ybinList[-1] - y_min
+        y_range = self.binning.ybinByCat[cat][-1] - y_min
         
         # Remap to [-1,1]
         x_center_mapped = float(x_center - x_min)/x_range #float cast prevents returning zero if bin edges are ints
@@ -472,8 +472,10 @@ class BinnedDistribution(Generic2D):
         '''
         super(BinnedDistribution,self).__init__(name,binning,forcePositive=forcePositive)
         for cat in _subspace:
+            print('inhist %s is %dx%d' % (inhist.GetName(), inhist.GetNbinsX(), inhist.GetNbinsY()))
             cat_name = name+'_'+cat
-            cat_hist = copy_hist_with_new_bins(cat_name,'X',inhist,self.binning.xbinByCat[cat])
+            cat_histX = copy_hist_with_new_bins(cat_name,'X',inhist,   self.binning.xbinByCat[cat])
+            cat_hist  = copy_hist_with_new_bins(cat_name,'Y',cat_histX,self.binning.ybinByCat[cat])
             print('\nFilling BinnedDistribution for %s (%dx%d, %d entries)' % (cat_hist.GetName(), cat_hist.GetNbinsX(), cat_hist.GetNbinsY(), cat_hist.Integral()))
             for ybin in range(1,cat_hist.GetNbinsY()+1):
                 for xbin in range(1,cat_hist.GetNbinsX()+1):
@@ -490,8 +492,8 @@ class BinnedDistribution(Generic2D):
                     ## New implementation: yield is data yield (min of 0.5) multiplied by an exponential, so non-negative
                     bin_val = cat_hist.GetBinContent(xbin,ybin)
                     if verbose and bin_val < 1: print('\nBin (%d, %d) has %d entries, set to 0.5' % (xbin, ybin, bin_val))
-                    bin_val_nom = max(0.5, bin_val)
-                    form = '%d.0*exp(@0)' % bin_val_nom
+                    bin_val_nom = max(0.4, bin_val - 0.1)
+                    form = '(0.1 + %d.0*exp(@0))' % bin_val_nom
                     bin_par = bin_name+'_par0'
                     ## Construct a scaling nuisance parameter with default value exp(0) = 1.0
                     bin_nuis = RooRealVar(bin_par, bin_par, 0.0, -20.0, 10.0)
@@ -506,6 +508,9 @@ class BinnedDistribution(Generic2D):
                     # self.nuisances.append({'name':bin_par, 'constraint':'param 0.0 %.6f' % sigma_exp, 'obj': bin_nuis})
 
                     self._varStorage.append(self.binVars[bin_name]) # For safety if we add shape templates
+                ## End loop: for xbin in range(1,cat_hist.GetNbinsX()+1)
+            ## End loop: for ybin in range(1,cat_hist.GetNbinsY()+1)
+        ## End loop: for cat in _subspace
 
     def AddShapeTemplates(self,nuis_name,up_shape,down_shape,constraint="param 1 0"):
         '''Add variation shape templates that are used to create a map between
@@ -542,8 +547,10 @@ class BinnedDistribution(Generic2D):
 
         for cat in _subspace:
             cat_name = self.name+'_'+cat
-            cat_hist_up =   copy_hist_with_new_bins(up_shape.GetName()+'_'+cat,  'X', up_shape,   self.binning.xbinByCat[cat])
-            cat_hist_down = copy_hist_with_new_bins(down_shape.GetName()+'_'+cat,'X', down_shape, self.binning.xbinByCat[cat])
+            cat_hist_upX =   copy_hist_with_new_bins(up_shape.GetName()+'_'+cat,  'X', up_shape,       self.binning.xbinByCat[cat])
+            cat_hist_up  =   copy_hist_with_new_bins(up_shape.GetName()+'_'+cat,  'Y', cat_hist_upX,   self.binning.ybinByCat[cat])
+            cat_hist_downX = copy_hist_with_new_bins(down_shape.GetName()+'_'+cat,'X', down_shape,     self.binning.xbinByCat[cat])
+            cat_hist_down  = copy_hist_with_new_bins(down_shape.GetName()+'_'+cat,'Y', cat_hist_downX, self.binning.ybinByCat[cat])
             for ybin in range(1,cat_hist_up.GetNbinsY()+1):
                 for xbin in range(1,cat_hist_up.GetNbinsX()+1):
                     bin_name = '%s_%s_bin_%s-%s'%(cat_name,nuis_name,xbin,ybin)

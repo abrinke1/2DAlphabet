@@ -16,11 +16,11 @@ class Binning:
         self.sigEnd = binning_dict['X']['SIGEND']
         self.xtitle = binning_dict['X']['TITLE']
         self.ytitle = binning_dict['Y']['TITLE']
-        self.xbinByCat, self.ybinList = parse_binning_info(binning_dict)
-        self.ySlices,self.ySliceIdx = self._getYslices(binning_dict) # x slices defined as properties
+        self.xbinByCat, self.ybinByCat = parse_binning_info(binning_dict)
+        self.ySlices,self.ySliceIdxs = self._getYslices(binning_dict) # x slices defined as properties
         self._checkBinning('X',start_template)
         self._checkBinning('Y',start_template)
-        self.xVars, self.yVar = self.CreateRRVs(binning_dict['X'], binning_dict['Y']) 
+        self.xVars, self.yVars = self.CreateRRVs(binning_dict['X'], binning_dict['Y'])
 
     def CreateRRVs(self,xdict,ydict):
         '''Create the RooRealVars representing the X and Y axes.
@@ -34,15 +34,17 @@ class Binning:
         Returns:
             tuple: (0) dict of X axis RooRealVars and (1) Y axis RooRealVar.
         '''
-        yRRV = create_RRV_base(ydict['NAME']+'_'+self.name,
-                          ydict['TITLE'],
-                          self.ybinList)
+        yRRVs = {}
+        for c in ['LOW','SIG','HIGH']:
+            yRRVs[c] = create_RRV_base(ydict['NAME']+'_'+c+'_'+self.name,
+                                  ydict['TITLE'],
+                                  self.ybinByCat[c])
         xRRVs = {}
         for c in ['LOW','SIG','HIGH']:
             xRRVs[c] = create_RRV_base(xdict['NAME']+'_'+c+'_'+self.name,
                                   xdict['TITLE'],
                                   self.xbinByCat[c])
-        return xRRVs,yRRV
+        return xRRVs,yRRVs
 
     def _checkBinning(self,axis,start_template):
         '''Perform sanity check that new binning scheme is a subset of the
@@ -58,38 +60,56 @@ class Binning:
         input_min = getattr(start_template,'Get%saxis'%axis)().GetXmin()
         input_max = getattr(start_template,'Get%saxis'%axis)().GetXmax()
 
-        if axis == 'X': new_bins = self.xbinList
-        else: new_bins = self.ybinList
+        for c in ['LOW','SIG','HIGH']:
+            if axis == 'X' and c == 'SIG':  ## Only set/check x-bins once
+                new_bins = self.xbinList
+            elif axis == 'Y':
+                new_bins = self.ybinByCat[c]
+            else: continue
 
-        if (new_bins[0] < input_min) or (new_bins[-1] > input_max):
-            raise ValueError('%s axis requested is larger than input\n\tInput: [%s,%s]\n\tRequested: [%s,%s]'%(axis,input_min,input_max,new_bins[0],new_bins[-1]))
-        prev = -1000000
-        for b in new_bins:
-            if b > prev:
-                prev = b
-            else:
-                raise ValueError('%s axis bin edges must be in increasing order!'%axis)
+            if (new_bins[0] < input_min) or (new_bins[-1] > input_max):
+                raise ValueError('%s axis requested is larger than input\n\tInput: [%s,%s]\n\tRequested: [%s,%s]'%(axis,input_min,input_max,new_bins[0],new_bins[-1]))
+            prev = -1000000
+            for b in new_bins:
+                if b > prev:
+                    prev = b
+                else:
+                    raise ValueError('%s axis bin edges must be in increasing order!'%axis)
+        ## End loop: for c in ['LOW','SIG','HIGH']
 
     def _getYslices(self,binning_dict):
         if 'SLICES' in binning_dict['Y']:
-            if len(binning_dict['Y']['SLICES']) != 4:
-                raise RuntimeError('Must define Y SLICES as a list of four values which represent the edges of the continuous slices.')
-            elif binning_dict['Y']['SLICES'][0] != self.ybinList[0]:
-                raise ValueError('First edge of Y SLICES does not match axis (%s vs %s)'%(binning_dict['Y']['SLICES'][0], self.ybinList[0]))
-            elif binning_dict['Y']['SLICES'][-1] != self.ybinList[-1]:
-                raise ValueError('Last edges of Y SLICES does not match axis (%s vs %s)'%(binning_dict['Y']['SLICES'][-1], self.ybinList[-1]))
             slices = binning_dict['Y']['SLICES']
-            idxs = [0, self.ybinList.index(slices[1]), self.ybinList.index(slices[2]), len(self.ybinList)-1]
+            idxs = {}
+            for c in ['LOW','SIG','HIGH']:
+                if len(binning_dict['Y']['SLICES']) != 4:
+                    raise RuntimeError('Must define Y SLICES as a list of four values which represent the edges of the continuous slices.')
+                elif binning_dict['Y']['SLICES'][0] != self.ybinByCat[c][0]:
+                    raise ValueError('First edge of Y SLICES does not match axis (%s vs %s)'%(binning_dict['Y']['SLICES'][0], self.ybinByCat[c][0]))
+                elif binning_dict['Y']['SLICES'][-1] != self.ybinByCat[c][-1]:
+                    raise ValueError('Last edges of Y SLICES does not match axis (%s vs %s)'%(binning_dict['Y']['SLICES'][-1], self.ybinByCat[c][-1]))
+                idxs[c] = [0, self.ybinByCat[c].index(slices[1]), self.ybinByCat[c].index(slices[2]), len(self.ybinByCat[c])-1]
+            ## End loop: for c in ['LOW','SIG','HIGH']
         else:
             slices, idxs = self._autoYslices()
 
         return slices, idxs
 
     def _autoYslices(self):
-        nbins = len(self.ybinList)-1
-        idxs = [0, int(nbins/4), int(nbins/4)+int(nbins/3), nbins]
-        slices = [int(self.ybinList[i]) for i in idxs]
-
+        slices = []
+        idxs = {}
+        for c in ['LOW','SIG','HIGH']:
+            nbins = len(self.ybinByCat[c])-1
+            idxs[c] = [0, int(nbins/4), int(nbins/4)+int(nbins/3), nbins]
+            print(idxs[c])
+            if len(slices) == 0:
+                slices = [int(self.ybinByCat[c][i]) for i in idxs[c]]
+                print(slices)
+            else:
+                for iS in range(len(slices)):
+                    if slices[iS] != int(self.ybinByCat[c][idxs[c][iS]]):
+                        raise RuntimeError('_autoYslices iS = %d gives %d, previous category was %d' % (iS, int(self.ybinByCat[c][iS]), slices[iS]))
+        ## End loop: for c in ['LOW','SIG','HIGH']
         return slices, idxs
 
     @property
@@ -140,20 +160,24 @@ class Binning:
     def GetBinCenterX(self,ibin,cat):
         return self.GetBinCenterBase(ibin,self.xbinByCat[cat])
 
-    def GetBinCenterY(self,ibin):
-        return self.GetBinCenterBase(ibin,self.ybinList)
+    def GetBinCenterY(self,ibin,cat):
+        return self.GetBinCenterBase(ibin,self.ybinByCat[cat])
 
     def CreateHist(self,name,cat=''):
         if cat != '':
             xbins = self.xbinByCat[cat]
         else:
             xbins = self.xbinList
+            ## Should only call CreateHist without specifying "cat" if y-bins are uniform
+            assert(len(self.ybinByCat['SIG']) == len(self.ybinByCat['HIGH']))
+            assert(len(self.ybinByCat['SIG']) == len(self.ybinByCat['HIGH']))
+            cat = 'SIG'
 
         return ROOT.TH2F(name,name,
                         len(xbins)-1,
                         array.array('d',xbins),
-                        len(self.ybinList)-1,
-                        array.array('d',self.ybinList)
+                        len(self.ybinByCat[cat])-1,
+                        array.array('d',self.ybinByCat[cat])
         )
 
 def create_RRV_base(name,title,bins):
@@ -203,20 +227,30 @@ def parse_binning_info(binDict):
     Returns:
         tuple: In order - new bins in the X axis, new bins in the Y axis
     '''
+    print('\nInside parse_binning_info in binning.py')
     for v in ['X','Y']:
+        print('Rebinning axis %s, new_bins are:' % v)
         axis = binDict[v]
-        if (v == 'X') and ('LOW' in axis.keys()) and ('SIG' in axis.keys()) and ('HIGH' in axis.keys()):
+        if ('LOW' in axis.keys()) and ('SIG' in axis.keys()) and ('HIGH' in axis.keys()):
             new_bins = {c:parse_axis_info(axis[c]) for c in ['LOW','SIG','HIGH']}
         else:
             new_bins = parse_axis_info(axis)
+        print(new_bins)
             
         if v == 'X':
             if isinstance(new_bins,list):
                 newXbins = binlist_to_bindict(new_bins,axis['SIGSTART'],axis['SIGEND'])
             else:
                 newXbins = new_bins
-        elif v == 'Y': newYbins = new_bins
+        elif v == 'Y':
+            if isinstance(new_bins,list):
+                newYbins = {'LOW':new_bins, 'SIG':new_bins, 'HIGH':new_bins}
+            else:
+                newYbins = new_bins
 
+    print('Returning newXbins and newYbins:')
+    print(newXbins)
+    print(newYbins)
     return newXbins,newYbins
     
 def parse_axis_info(axisDict):

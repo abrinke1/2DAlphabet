@@ -45,7 +45,12 @@ class TwoDAlphabet:
             self._setupProjDir(verbose)
             ## "template_file" is just one of the input files, usually data
             if verbose: print('Opening input ROOT file %s' % self.df.iloc[0].source_filename)
-            template_file = ROOT.TFile.Open(self.df.iloc[0].source_filename)
+            infiletoopen = self.df.iloc[0].source_filename
+            print('\nTODO : Hacky solution to point to file with systematics. Should fix!!! - AWB 2025.07.25')
+            if '_Data_' in infiletoopen.split('/')[-1]:
+                infiletoopen = infiletoopen.replace('_pnet_34a','')
+                print('Replaced %s with %s' % (self.df.iloc[0].source_filename, infiletoopen))
+            template_file = ROOT.TFile.Open(infiletoopen)
             if verbose: print('Looking for histogram %s' % self.df.iloc[0].source_histname)
             template = template_file.Get(self.df.iloc[0].source_histname)
             template.SetDirectory(0)
@@ -307,7 +312,7 @@ class TwoDAlphabet:
         var_lists = {}
         for binningName in self.binnings.keys():
             var_lists[binningName] = {
-                c:ROOT.RooArgList(self.binnings[binningName].xVars[c], self.binnings[binningName].yVar) for c in ['LOW','SIG','HIGH']
+                c:ROOT.RooArgList(self.binnings[binningName].xVars[c], self.binnings[binningName].yVars[c]) for c in ['LOW','SIG','HIGH']
             }
 
         print ("Making workspace...")
