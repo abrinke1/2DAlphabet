@@ -1,5 +1,5 @@
 #! /usr/bin/env python
-## Script to add merge_files_mctoy.py output from 4 eras into "Run2"
+## Script to add merge_files_mctoy.py output from 4 eras into "Run2", or 2016pre/post into 2016
 
 import os
 import sys
@@ -14,11 +14,26 @@ R.gStyle.SetOptStat(0)  ## Don't display stat boxes
 ## User configuration
 VERBOSE = False
 VVERBOSE = False
-DATE  = '2025_07_25'
-YEARS = ['2016preVFP','2016postVFP','2017','2018']
-YRX = YEARS[-1]
+DATE  = '2025_08_15'
+COMB  = sys.argv[1]  ## Run2 or 2016
 #CATS = []  ## If empty, merge all categories
-CATS = ['LepHiT','LepLo','gg0lHi','HadXLo','VVBFjj','gg0lVLo']
+CATS = ['LepHiT','LepLo','gg0lVHi','gg0lVLo','HadXHi','HadXLo']
+#CATS = ['gg0lHi','gg0lLo','VBFjjHiPtHi','VBFjjHiPtLo','VBFjjLoPtHi','VBFjjLoPtHi']
+#CATS = ['VjjHi','VjjLo','VjjHi350','VjjLo350','VjjHi400','VjjLo400']
+#CATS = ['tt0l1b','tt0l0b','ZvvHi','ZvvLo']
+#CATS = ['Zll','WlvHi','WlvLo','ttblv','ttbblv','ttbll']
+
+if COMB == 'Run2':
+    YEARS = ['2016preVFP','2016postVFP','2017','2018']
+elif COMB == '2016':
+    YEARS = ['2016preVFP','2016postVFP']
+    CATS  = ['gg0lVHi','gg0lVLo']
+    #CATS  = ['gg0lHi','gg0lLo','VBFjjHiPtHi','VBFjjHiPtLo','VBFjjLoPtHi','VBFjjLoPtHi']
+else:
+    print('\nInvalid combination target %s! Quitting.' % COMB)
+    sys.exit()
+
+YRX = YEARS[-1]
 
 eos_from_config = [eos for eos in (open('config/user.config','r')).readlines() if eos.startswith('EOS_DIR=')]
 EOS_DIR = eos_from_config[0].replace('EOS_DIR=','').replace('\n','')
@@ -48,9 +63,8 @@ def main():
             RAW_IN = ('/raw_inputs/' in o_dir and not '2D_in_merged_' in o_dir)
             ## Raw input files in leptonic categories have X4b WP sub-directory
             if RAW_IN and ('/Zll' in o_dir or '/Wlv' in o_dir or '/ttb' in o_dir):
-                WP = '/WP40' if ('gg0l' in o_dir or 'VBF' in o_dir) else '/WP60'
-                o_dir = o_dir+WP
-            o_dir = o_dir+'/Run2/'
+                o_dir = o_dir+'/WP60'
+            o_dir = o_dir+'/'+COMB+'/'
             print('\nCreating '+o_dir)
             if os.path.exists(o_dir):
                 shutil.rmtree(o_dir)
@@ -59,22 +73,22 @@ def main():
             ## Get list of files for each year, and confirm there is the same number
             f_list = {}
             for yr in YEARS:
-                in_dir = o_dir.replace('/Run2/','/'+yr+'/')
-                f_list[yr] = [in_dir+fl for fl in os.listdir(in_dir) if fl.endswith('.root')]
+                in_dir = o_dir.replace('/'+COMB+'/','/'+yr+'/')
+                f_list[yr] = [in_dir+fl for fl in os.listdir(in_dir) if fl.endswith(yr+'.root')]
             for yrA in YEARS:
                 for yrB in YEARS:
                     assert len(f_list[yrA]) == len(f_list[yrB]), '%s has %d files, %s has %d files! (%s vs. %s)' % (yrA, len(f_list[yrA]), yrB, len(f_list[yrB]), f_list[yrA][0], f_list[yrB][0])
-            f_list['Run2'] = [fl.replace(YRX,'Run2') for fl in f_list[YRX]]
-            if VERBOSE: print('  * Found %d files' % len(f_list['Run2']))
+            f_list[COMB] = [fl.replace(YRX,COMB) for fl in f_list[YRX]]
+            if VERBOSE: print('  * Found %d files' % len(f_list[COMB]))
 
             ## Loop over files
             nHistTot = 0
-            for fn_out in f_list['Run2']:
+            for fn_out in f_list[COMB]:
                 f_ins = {}
                 hn_ins = {}
                 ## Get list of histograms for each year, and confirm there is the same number
                 for yr in YEARS:
-                    fn_in = fn_out.replace('/Run2/', '/'+yr+'/').replace('Run2.root', yr+'.root')
+                    fn_in = fn_out.replace('/'+COMB+'/', '/'+yr+'/').replace(COMB+'.root', yr+'.root')
                     f_ins[yr] = R.TFile(fn_in, 'open')
                     hn_ins[yr] = {}
                     hn_ins[yr]['Nom'],hn_ins[yr]['Sys'],hn_ins[yr]['SysYr'] = [],[],[]
@@ -112,7 +126,7 @@ def main():
                                 print(hn_ins[yrA][suff])
                                 print('***************')
                                 print(hn_ins[yrB][suff])
-                                assert False, '%s has %d %s hists, %s has %d!' % (fn_out.replace('Run2',yrA), len(hn_ins[yrA][suff]), suff, fn_out.replace('Run2',yrB), len(hn_ins[yrB][suff]))
+                                assert False, '%s has %d %s hists, %s has %d!' % (fn_out.replace(COMB,yrA), len(hn_ins[yrA][suff]), suff, fn_out.replace(COMB,yrB), len(hn_ins[yrB][suff]))
 
                 ## Create output file and fill with summed histograms from each year
                 ## For signal, some systematics will be specific to each year
@@ -124,7 +138,7 @@ def main():
                 nHist = 0
                 for hn_in in hn_ins[YRX]['Nom']+hn_ins[YRX]['Sys']:
                     try:
-                        h_out = f_ins[YRX].Get(hn_in).Clone(hn_in.replace(YRX,'Run2'))
+                        h_out = f_ins[YRX].Get(hn_in).Clone(hn_in.replace(YRX,COMB))
                     except:
                         assert False, 'Could not find %s in %s' % (hn_in, f_ins[YRX].GetName())
                     for yr in YEARS[0:-1]:
@@ -147,16 +161,16 @@ def main():
                             hn_pref = hn_in.split('_'+pf+'_')[0]
                             assert hn_pref+'_'+pf+'_Nom' in hn_ins[yr]['Nom'],  hn_pref+'_'+pf+'_Nom not found in '+f_ins[yr].GetName()
                             hn_suff = hn_in.replace(hn_pref+'_'+pf,'')
-                            hn_pref = hn_pref.replace('_'+yr+'_','_Run2_')
+                            hn_pref = hn_pref.replace('_'+yr+'_','_'+COMB+'_')
                             hn_out = hn_pref+'_'+pf+hn_suff
-                            assert '_Run2_' in hn_out, '%s failed to replace %s, got %s' % (hn_in, yr, hn_out)
+                            assert '_'+COMB+'_' in hn_out, '%s failed to replace %s, got %s' % (hn_in, yr, hn_out)
                             try:
                                 h_out = f_ins[yr].Get(hn_in).Clone(hn_out)
                             except:
                                 assert False, 'Could not find %s in %s' % (hn_in, f_ins[yr].GetName())
                             for yrB in YEARS:
                                 if yrB == yr: continue
-                                hn_inB = hn_out.replace(hn_suff,'').replace('_Run2_','_'+yrB+'_')
+                                hn_inB = hn_out.replace(hn_suff,'').replace('_'+COMB+'_','_'+yrB+'_')
                                 hn_inB = hn_inB+'_Nom'
                                 try:
                                     h_out.Add(f_ins[yrB].Get(hn_inB))
@@ -176,9 +190,9 @@ def main():
                     f_ins[yr].Close()
                 if VERBOSE: print('    - Wrote %s histograms to %s' % (nHist, fn_out))
 
-            ## End loop: for fn_out in f_list['Run2']
+            ## End loop: for fn_out in f_list[COMB]
 
-            print('\nAdded %d files and %d histograms in %s' % (len(f_list['Run2']), nHistTot, o_dir))
+            print('\nAdded %d files and %d histograms in %s' % (len(f_list[COMB]), nHistTot, o_dir))
 
         ## End loop: for o_dir in [top_dir+sub_dir for sub_dir in os.listdir(top_dir)]
         print('\n*** Done with categories in %s ***\n' % top_dir)
