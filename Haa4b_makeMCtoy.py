@@ -15,6 +15,8 @@ VVERBOSE = False
 VVVERBOSE = False
 DELETE_OLD = True  ## Remove old files
 TEST = False  ## Append '_test' to outputs
+DATE = '2025_08_15'
+
 CAT = str(sys.argv[1])  ## gg0lIncl/Hi/Lo, VBFjjIncl/Hi/Lo, LepHi/Lo
 CATL = CAT  ## Modified category name
 NTOYS    = int(sys.argv[2])
@@ -28,8 +30,8 @@ for mA in MASSESA:  ## Signal to inject, in 1/1000ths
     if   int(mA) <= 20: SIGINJ[mA] = [20]  ## [5, 10, 20, 50]
     elif int(mA) <= 40: SIGINJ[mA] = [50]  ## [10, 20, 50, 100]
     else:               SIGINJ[mA] = [100] ## [10, 20, 50, 100, 200]
-YEAR = 'Run2'
-DATE = '2025_07_25'
+YEAR = str(sys.argv[4]) ## Run2, 2018, 2017, 2016
+assert(YEAR in ['Run2', '2018', '2017', '2016'])
 eos_from_config = [eos for eos in (open('config/user.config','r')).readlines() if eos.startswith('EOS_DIR=')]
 EOS_DIR = eos_from_config[0].replace('EOS_DIR=','').replace('\n','')
 PLOT_DIR_IN = EOS_DIR+'/plots/'+DATE+'/'+CAT+'/'+YEAR
@@ -415,7 +417,8 @@ print("Running Haa4b_makeMCtoy.py for the following category:", CAT)
 WP = 'WP60'
 if CAT.startswith('gg0l') or CAT.startswith('VBFjj'):
     WP = 'WP40'
-if CAT == 'VVBFjj':
+## Categories including both VBFjj and Vjj have mixed WPs
+if CAT == 'VVBFjj' or CAT.startswith('HadX'):
     WP = 'WP4060'
 
 ## Different categories use different sets of background samples
@@ -424,7 +427,6 @@ sigs = None
 if CAT.startswith('Had') or CAT.startswith('gg0l') or ('VBFjj' in CAT) or CAT.startswith('Vjj') or CAT.startswith('tt0l'):
     ## Background MC already summed ('MC') for all categories except VBFjj, which has manual summing ('SumMC')
     ## Use manual summing ('SumMC') for all categories, since merge_files_mctoy.py suppresses QCD MC spikes
-    #samps.append('SumMC' if (('VBFjj' in CAT) or (CAT == 'gg0lV')) else 'MC')
     samps.append('SumMC')
     sigs = ['ggH','VBFH','WH','ZH','ttH','SumH']
     for sig in sigs:
@@ -438,7 +440,7 @@ elif CAT.startswith('Lep'):
         CATL = CAT
     else:
         assert False, '\nInvalid CAT = %s!!! Quitting.' % CAT
-    ## Use manual summing ('SumMC') instead of original sum ('MC') in order to drop QCD from Zvv background model
+    ## Use manual summing ('SumMC') instead of original sum ('MC') to drop QCD from Zvv and tt0l background
     samps.append('SumMC')
     sigs = ['WH','ZH','ttH','SumH']
     for sig in sigs:
@@ -507,8 +509,6 @@ for samp in samps:
     ## For WP40 samples (gg0l and VBFjj and VVBFjj), scale background MC WP60 --> WP40
     if (WP == 'WP40' or WP == 'WP4060') and samp != 'Data' and not 'Htoaato4b' in samp:
         for PF in PFs:
-            ## As of right now, WP60 unavailable for VBFjj, and thus for VVBFjj and gg0lVLo -- AWB 2025.07.24
-            if CAT != 'gg0lHi' and CAT != 'gg0lLo': continue
             h_in_WP60  = in_file.Get(hname[PF].replace(WP,'WP60'))
             WP40_yield = h_in[PF].Integral()
             h_in[PF].Scale(0)
