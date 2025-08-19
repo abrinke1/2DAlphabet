@@ -2,39 +2,42 @@
   "NAME": "LepHiT_Htoaato4b",
   "PROCESSES": {
     "data_obs": {
-      "SYSTEMATICS":[],
+      "SYSTEMATICS": [],
       "SCALE": 1.0,
       "COLOR": 1,
       "TYPE": "DATA",
-      "ALIAS": "LepHiT_Data_2018",
+      "ALIAS": "LepHiT_MCrounded_Run2_pnet_34a",
       "TITLE": "Data",
       "LOC": "path/FILE:HIST"
     },
     "SIGNAME": {
-      "SYSTEMATICS":["lumi"],
+      "SYSTEMATICS": [
+        "lumi"
+      ],
       "SCALE": 1.0,
       "COLOR": 1,
       "TYPE": "SIGNAL",
       "TITLE": "H to aa to 4b, bm_{a} = XX (GeV)",
-      "LOC":"path/FILE:HIST"
+      "LOC": "path/FILE:HIST"
     }
   },
-
   "REGIONS": {
     "Pass": {
-      "PROCESSES": ["SIGNAME"],
+      "PROCESSES": [
+        "SIGNAME"
+      ],
       "BINNING": "default"
     },
     "Fail": {
-      "PROCESSES": ["SIGNAME"],
+      "PROCESSES": [
+        "SIGNAME"
+      ],
       "BINNING": "default"
     }
   },
-
   "GLOBAL": {
     "FILE": "$process.root"
   },
-
   "BINNING": {
     "default": {
       "X": {
@@ -49,20 +52,29 @@
       "Y": {
         "NAME": "mA",
         "TITLE": "m_{a} (GeV)",
-        "MIN": 10,
-        "MAX": 66,
-        "NBINS": 7
+        "SLICES": [9, 25, 49, 65],
+        "LOW": {
+          "MIN":  9,
+          "MAX": 65,
+          "NBINS": 7
+        },
+        "SIG": {
+          "BINS": [9,13,17,21,25,29,33,37,41,45,49,53,57,65]
+        },
+        "HIGH": {
+          "MIN": 9,
+          "MAX": 65,
+          "NBINS": 7
+        }
       }
     }
   },
-
   "SYSTEMATICS": {
     "lumi": {
       "CODE": 0,
       "VAL": 1.018
     }
   },
-
   "OPTIONS": {
     "overwrite": true,
     "blindedPlots": [],

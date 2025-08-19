@@ -2,67 +2,79 @@
   "NAME": "HadXLo_Htoaato4b",
   "PROCESSES": {
     "data_obs": {
-      "SYSTEMATICS":[],
+      "SYSTEMATICS": [],
       "SCALE": 1.0,
       "COLOR": 1,
       "TYPE": "DATA",
-      "ALIAS": "HadXLo_Data_2018",
+      "ALIAS": "HadXLo_MCrounded_Run2_pnet_34a",
       "TITLE": "Data",
       "LOC": "path/FILE:HIST"
     },
     "SIGNAME": {
-      "SYSTEMATICS":["lumi"],
+      "SYSTEMATICS": [
+        "lumi"
+      ],
       "SCALE": 1.0,
       "COLOR": 1,
       "TYPE": "SIGNAL",
       "TITLE": "H to aa to 4b, bm_{a} = XX (GeV)",
-      "LOC":"path/FILE:HIST"
+      "LOC": "path/FILE:HIST"
     }
   },
-
   "REGIONS": {
     "Pass": {
-      "PROCESSES": ["SIGNAME"],
+      "PROCESSES": [
+        "SIGNAME"
+      ],
       "BINNING": "default"
     },
     "Fail": {
-      "PROCESSES": ["SIGNAME"],
+      "PROCESSES": [
+        "SIGNAME"
+      ],
       "BINNING": "default"
     }
   },
-
   "GLOBAL": {
     "FILE": "$process.root"
   },
-
   "BINNING": {
     "default": {
       "X": {
         "NAME": "mH",
         "TITLE": "m_{H} (GeV)",
         "MIN": 60,
-        "MAX": 200,
-        "NBINS": 14,
+        "MAX": 180,
+        "NBINS": 12,
         "SIGSTART": 110,
         "SIGEND": 140
       },
       "Y": {
         "NAME": "mA",
         "TITLE": "m_{a} (GeV)",
-        "MIN": 10,
-        "MAX": 66,
-        "NBINS": 14
+        "SLICES": [11, 23, 47, 63],
+        "LOW": {
+          "MIN": 11,
+          "MAX": 63,
+          "NBINS": 13
+        },
+        "SIG": {
+          "BINS": [11,12,13,14,15,16,17,18,19,20,21,22,23,25,27,29,31,33,35,37,39,41,43,45,47,49,51,53,55,57,59,63]
+        },
+        "HIGH": {
+          "MIN": 11,
+          "MAX": 63,
+          "NBINS": 13
+        }
       }
     }
   },
-
   "SYSTEMATICS": {
     "lumi": {
       "CODE": 0,
       "VAL": 1.018
     }
   },
-
   "OPTIONS": {
     "overwrite": true,
     "blindedPlots": [],

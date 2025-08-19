@@ -2,72 +2,84 @@
   "NAME": "LepLo_Htoaato4b",
   "PROCESSES": {
     "data_obs": {
-      "SYSTEMATICS":[],
+      "SYSTEMATICS": [],
       "SCALE": 1.0,
       "COLOR": 1,
       "TYPE": "DATA",
-      "ALIAS": "LepLo_Data_2018",
+      "ALIAS": "LepLo_Datarounded_Run2_pnet_34a",
       "TITLE": "Data",
       "LOC": "path/FILE:HIST"
     },
     "SIGNAME": {
-      "SYSTEMATICS":["lumi"],
+      "SYSTEMATICS": [
+        "lumi"
+      ],
       "SCALE": 1.0,
       "COLOR": 1,
       "TYPE": "SIGNAL",
       "TITLE": "H to aa to 4b, bm_{a} = XX (GeV)",
-      "LOC":"path/FILE:HIST"
+      "LOC": "path/FILE:HIST"
     }
   },
-
   "REGIONS": {
     "Pass": {
-      "PROCESSES": ["SIGNAME"],
+      "PROCESSES": [
+        "SIGNAME"
+      ],
       "BINNING": "default"
     },
     "Fail": {
-      "PROCESSES": ["SIGNAME"],
+      "PROCESSES": [
+        "SIGNAME"
+      ],
       "BINNING": "default"
     }
   },
-
   "GLOBAL": {
     "FILE": "$process.root"
   },
-
   "BINNING": {
     "default": {
       "X": {
         "NAME": "mH",
         "TITLE": "m_{H} (GeV)",
         "MIN": 60,
-        "MAX": 200,
-        "NBINS": 14,
+        "MAX": 190,
+        "NBINS": 13,
         "SIGSTART": 110,
         "SIGEND": 140
       },
       "Y": {
         "NAME": "mA",
         "TITLE": "m_{a} (GeV)",
-        "MIN": 10,
-        "MAX": 64,
-        "NBINS": 9
+        "SLICES": [10, 22, 46, 64],
+        "LOW": {
+          "MIN": 10,
+          "MAX": 64,
+          "NBINS": 9
+        },
+        "SIG": {
+          "BINS": [10,14,16,18,20,22,24,26,28,31,34,37,40,43,46,49,52,55,58,64]
+        },
+        "HIGH": {
+          "MIN": 10,
+          "MAX": 64,
+          "NBINS": 9
+        }
       }
     }
   },
-
   "SYSTEMATICS": {
     "lumi": {
       "CODE": 0,
       "VAL": 1.018
     }
   },
-
   "OPTIONS": {
     "overwrite": true,
-    "blindedPlots": ["Pass"],
-    "blindedFit": ["Pass"],
-    "plotPrefitSigInFitB": true,
+    "blindedPlots": [],
+    "blindedFit": [],
+    "plotPrefitSigInFitB": false,
     "plotUncerts": true,
     "plotTitles": false,
     "year": 2018
