@@ -3,39 +3,31 @@
 #########################################################
 # Prepare input ROOT files to be used in generatetoys.sh
 # 20 - 30 minutes per category per year, with systematics
+# Run in 4 separate lxplus sessions, one per year/era
 #########################################################
 
-DATE="2025_07_25"
+iYear=$1  ## 2016preVFP, 2016postVFP, 2017, or 2018
+DATE="2025_08_15"
 source config/user.config  ## Loads USER, LOC_DIR, and EOS_DIR
 OUTDIR="${EOS_DIR}/raw_inputs/${DATE}"
 
-# Start the timer
-START_TIME=$SECONDS
+if [[ $iYear != "2016preVFP" && $iYear != "2016postVFP" && $iYear != "2017" && $iYear != "2018" ]]; then
+    echo "Invalid year $iYear! Quitting."
+    exit
+fi
 
 ## Prepare inputs
-# echo " > Merging categories (gg0lHi gg0lVLo VVBFjj LepHiT LepLo HadXLo gg0lV LepHi LepIncl gg0lIncl VBFjjIncl VjjIncl tt0lIncl)"
-# for CAT in gg0lHi gg0lVLo VVBFjj LepHiT LepLo HadXLo gg0lV LepHi LepIncl gg0lIncl VBFjjIncl VjjIncl tt0lIncl; do
-echo " > Merging categories (gg0lHi gg0lVLo VVBFjj LepHiT LepLo HadXLo)"
-for CAT in gg0lHi gg0lVLo VVBFjj LepHiT LepLo HadXLo; do
+echo " > Merging categories (gg0lVHi gg0lVLo HadXHi HadXLo LepHiT LepLo)"
+for CAT in gg0lVHi gg0lVLo HadXHi HadXLo LepHiT LepLo; do
     #for YEAR in 2016preVFP 2016postVFP 2017 2018; do
-    for YEAR in XXXX; do
+    for YEAR in $iYear; do
 	## Producing "Incl" categories also produces Hi/Lo plots
-	echo " > python3 merge_files_mctoy.py ${CAT} ${YEAR}"
-	python3 merge_files_mctoy.py ${CAT} ${YEAR}
-	echo " > Done with python3 merge_files_mctoy.py ${CAT} ${YEAR}"
-	ELAPSED=$((SECONDS - START_TIME))
-	hours=$((ELAPSED / 3600))
-	minutes=$(((ELAPSED % 3600) / 60))
-	seconds=$((ELAPSED % 60))
-	echo "Time to merge ${CAT} ${YEAR}: $hours hour(s), $minutes minute(s), $seconds second(s)"
+	echo " > python3 merge_files_mctoy.py ${CAT} ${YEAR} >& merge_files_${CAT}_${YEAR}.txt &"
+	python3 merge_files_mctoy.py ${CAT} ${YEAR} >& merge_files_${CAT}_${YEAR}.txt &
     done
 done
 
-ELAPSED=$((SECONDS - START_TIME))
-hours=$((ELAPSED / 3600))
-minutes=$(((ELAPSED % 3600) / 60))
-seconds=$((ELAPSED % 60))
-echo "Time to merge standard categories: $hours hour(s), $minutes minute(s), $seconds second(s)"
+top
 
 # ## Optional for optimization studies, disabled by default
 # echo " > Merging modified LepHi and LepLo categories (A - H)"
@@ -47,9 +39,3 @@ echo "Time to merge standard categories: $hours hour(s), $minutes minute(s), $se
 # 	    python3 merge_files_mctoy.py LepHi${mod} ${YEAR}
 # 	done
 # done
-
-ELAPSED=$((SECONDS - START_TIME))
-hours=$((ELAPSED / 3600))
-minutes=$(((ELAPSED % 3600) / 60))
-seconds=$((ELAPSED % 60))
-echo "Time for all category merging: $hours hour(s), $minutes minute(s), $seconds second(s)"

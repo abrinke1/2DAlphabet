@@ -14,9 +14,9 @@ VBFDIR="/afs/cern.ch/work/m/moanwar/public/hto2ato4b/newVBFCat/2DAlphabet_inputF
 LEPDIR="/eos/user/h/hboucham/public/2D_Alphabet_Inputs"
 LEPTAG="081425"
 
-DOHAD=false
+DOHAD=true
 DOVBF=true
-DOLEP=false
+DOLEP=true
 
 # Start the timer
 START_TIME=$SECONDS
