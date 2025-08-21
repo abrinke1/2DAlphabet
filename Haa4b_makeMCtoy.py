@@ -434,10 +434,10 @@ if CAT.startswith('Had') or CAT.startswith('gg0l') or ('VBFjj' in CAT) or CAT.st
             samps.append(sig+'toaato4b_mA_'+str(mA))
 
 elif CAT.startswith('Lep'):
-    if CAT.startswith('LepHi') or CAT.startswith('LepLo'):
-        CATL = CAT[0:5]  ## i.e. LepHi or LepLo, without A, B, C ... modification
-    elif CAT == 'LepIncl':
+    if CAT == 'LepIncl' or CAT == 'LepHiT':
         CATL = CAT
+    elif CAT.startswith('LepHi') or CAT.startswith('LepLo'):
+        CATL = CAT[0:5]  ## i.e. LepHi or LepLo, without A, B, C ... modification
     else:
         assert False, '\nInvalid CAT = %s!!! Quitting.' % CAT
     ## Use manual summing ('SumMC') instead of original sum ('MC') to drop QCD from Zvv and tt0l background
