@@ -805,18 +805,25 @@ def MakeCard(ledger, subtag, workspaceDir, stg):
     jmax = ledger.nbkgs + ledger.nsignals -1
     kmax = len(ledger.GetShapeSystematics()) # does not include alphaParams
     ## Add in gaussian constraints for fit parameters
-    if ('_1x0' in stg or '_0x1' in stg):
+    if ('_0x0' in stg):
+        kmax += 0
+    elif ('_1x0' in stg or '_0x1' in stg):
         kmax += 1
-    if ('_1d1' in stg or '_2x0' in stg or '_0x2' in stg):
+    elif ('_1d1' in stg or '_2x0' in stg or '_0x2' in stg):
         kmax += 2
-    if ('_1x1' in stg or '_2d1' in stg or '_1d2' in stg):
+    elif ('_1x1' in stg or '_2d1' in stg or '_1d2' in stg):
         kmax += 3
-    if ('_2d2' in stg or '_2s1' in stg or '_1s2' in stg):
+    elif ('_2d2' in stg or '_2s1' in stg or '_1s2' in stg):
         kmax += 4
-    if ('_2s2' in stg or '_2x1' in stg or '_1x2' in stg):
+    elif ('_2s2' in stg or '_2x1' in stg or '_1x2' in stg):
         kmax += 5
-    if '_2x2' in stg:
+    elif '_2s3' in stg:
+        kmax += 6
+    elif '_2m2' in stg or '_2s4' in stg:
+        kmax += 7
+    elif '_2x2' in stg or '_2m3' in stg:
         kmax += 8
+    else: assert False, '\n\nInvalid fit function %s in MakeCard in twoDalphabet.py' % stg
     if 'smr_' in stg:
         kmax += 4
     channels = ['_'.join(r) for r in itertools.product(ledger.GetRegions(),['LOW','SIG','HIGH'])]
