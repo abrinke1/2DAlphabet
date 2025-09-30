@@ -471,12 +471,14 @@ class BinnedDistribution(Generic2D):
                 and any shape templates will asymptotically approach zero as the associated nuisance increases/decreases.
         '''
         super(BinnedDistribution,self).__init__(name,binning,forcePositive=forcePositive)
+        max_val = 0
         for cat in _subspace:
             print('inhist %s is %dx%d' % (inhist.GetName(), inhist.GetNbinsX(), inhist.GetNbinsY()))
             cat_name = name+'_'+cat
             cat_histX = copy_hist_with_new_bins(cat_name,'X',inhist,   self.binning.xbinByCat[cat])
             cat_hist  = copy_hist_with_new_bins(cat_name,'Y',cat_histX,self.binning.ybinByCat[cat])
             print('\nFilling BinnedDistribution for %s (%dx%d, %d entries)' % (cat_hist.GetName(), cat_hist.GetNbinsX(), cat_hist.GetNbinsY(), cat_hist.Integral()))
+            max_val = max(max_val, cat_hist.GetMaximum())
             for ybin in range(1,cat_hist.GetNbinsY()+1):
                 for xbin in range(1,cat_hist.GetNbinsX()+1):
                     bin_name = '%s_bin_%s-%s'%(cat_name,xbin,ybin)
@@ -492,12 +494,31 @@ class BinnedDistribution(Generic2D):
                     ## New implementation: yield is data yield (min of 0.5) multiplied by an exponential, so non-negative
                     bin_val = cat_hist.GetBinContent(xbin,ybin)
                     if verbose and bin_val < 1: print('\nBin (%d, %d) has %d entries, set to 0.5' % (xbin, ybin, bin_val))
-                    bin_val_nom = max(0.4, bin_val - 0.1)
-                    form = '(0.1 + %d.0*exp(@0))' % bin_val_nom
+                    # ## Study to "freeze" (zero-out) low-occupancy bins in corners of 2D distribution
+                    # mH = cat_hist.GetXaxis().GetBinCenter(xbin)
+                    # mA = cat_hist.GetYaxis().GetBinCenter(ybin)
+                    # 5*(63-mA) + (200-mH) = 35,35,17,7
+                    # if (1.5*(mA-10) + (mH-60) < 25) or (mA > 60 and (mH < 70 or mH > 170)) or (mA > 55 and mH > 190):
+                    #     print('Veto bin (%.1f,%.1f) = %d (%.2f%% of maximum)' % (mH,mA,bin_val,100*bin_val/max_val))
+                    # elif bin_val/max_val < 0.015:
+                    #     print('Keep (?) (%.1f,%.1f) = %d (%.2f%% of maximum)' % (mH,mA,bin_val,100*bin_val/max_val))
+
+                    # ## Old implementation with exponential bin yield
+                    # bin_val_nom = max(0.4, bin_val - 0.1)
+                    # form = '(0.1 + %.1f*exp(@0))' % bin_val_nom
+                    # bin_par = bin_name+'_par0'
+                    # bin_nuis = RooRealVar(bin_par, bin_par, 0.0, -20.0, 10.0)
+                    # bin_nuis.setError(3.0)  ## Factor of 20 up or down
+
+                    ## Use cosh function to avoid best-fit nuisance parameter being negtive infinity
+                    bin_val_nom = max(0.5, bin_val)
+                    form = '0.05*(exp(-1*@0) + exp(@0))'  ## i.e. 0.1*cosh(x), minimum sideband bin = 0.1
+                    bin_exp_nom = np.arccosh(10*bin_val_nom)
                     bin_par = bin_name+'_par0'
-                    ## Construct a scaling nuisance parameter with default value exp(0) = 1.0
-                    bin_nuis = RooRealVar(bin_par, bin_par, 0.0, -20.0, 10.0)
-                    bin_nuis.setError(3.0)  ## Factor of 20 up or down
+                    bin_nuis = RooRealVar(bin_par, bin_par, bin_exp_nom, -30.0, 30.0)
+                    bin_nuis_err = np.arccosh(10*(bin_val_nom + 4*np.sqrt(1+bin_val_nom))) - bin_exp_nom
+                    bin_nuis.setError(bin_nuis_err)  ## ~4 sigma up or down (not sure if this does anything)
+
                     self.binVars[bin_name] = RooFormulaVar(bin_name, bin_name, form, RooArgList(bin_nuis))
                     self.nuisances.append({'name':bin_par, 'constraint':'flatParam', 'obj': bin_nuis})
 
@@ -508,6 +529,7 @@ class BinnedDistribution(Generic2D):
                     # self.nuisances.append({'name':bin_par, 'constraint':'param 0.0 %.6f' % sigma_exp, 'obj': bin_nuis})
 
                     self._varStorage.append(self.binVars[bin_name]) # For safety if we add shape templates
+
                 ## End loop: for xbin in range(1,cat_hist.GetNbinsX()+1)
             ## End loop: for ybin in range(1,cat_hist.GetNbinsY()+1)
         ## End loop: for cat in _subspace
