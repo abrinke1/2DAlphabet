@@ -485,22 +485,28 @@ def copy_hist_with_new_bins(copyName,XorY,inHist,new_bins):
     rebin_axis = getattr(hist_copy,'Get%saxis'%axis_to_rebin)()
 
     # Loop through the old bins
+    # print('Old %s has %d bins from %.1f to %.1f' % (XorY, old_axis.GetNbins(), old_axis.GetBinLowEdge(1), old_axis.GetBinUpEdge(old_axis.GetNbins())))
     for static_bin in range(1,static_nbins+1):
-        # print 'Bin y: ' + str(binY)
+        # print('%s bin %d' % (axis_to_hold, static_bin))
         for rebin in range(1,rebin_nbins+1):
             new_bin_content = 0
             new_bin_errorsq = 0
             new_bin_min = rebin_axis.GetBinLowEdge(rebin)
             new_bin_max = rebin_axis.GetBinUpEdge(rebin)
 
-            # print '\t New bin x: ' + str(newBinX) + ', ' + str(newBinXlow) + ', ' + str(newBinXhigh)
+            # print('%s bin %d: [%.2f, %.2f]' % (axis_to_rebin, rebin, new_bin_min, new_bin_max))
             for old_bin in range(1,old_axis.GetNbins()+1):
                 old_bin_min = old_axis.GetBinLowEdge(old_bin)
                 old_bin_max = old_axis.GetBinUpEdge(old_bin)
-                if old_bin_min >= new_bin_max:
+
+                ## Add contents from underflow / overflow bins on y-axis only
+                underoverflow = ( (axis_to_rebin == "Y") and \
+                                  ( (rebin == 1           and old_bin_max <= new_bin_min) or \
+                                    (rebin == rebin_nbins and old_bin_min >= new_bin_max) ) )
+                if old_bin_min >= new_bin_max and not underoverflow:
                     break
-                elif old_bin_min >= new_bin_min and old_bin_min < new_bin_max:
-                    if old_bin_max <= new_bin_max:
+                elif (old_bin_min >= new_bin_min and old_bin_min < new_bin_max) or underoverflow:
+                    if old_bin_max <= new_bin_max or underoverflow:
                         if axis_to_rebin == "X":
                             new_bin_content += inHist.GetBinContent(old_bin,static_bin)
                             new_bin_errorsq += inHist.GetBinError(old_bin,static_bin)**2
