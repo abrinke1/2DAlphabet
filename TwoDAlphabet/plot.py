@@ -168,6 +168,9 @@ class Plotter(object):
                     #full.SetTitle('%s, %s, %s'%(proc_title,region,time))
 
                     #self.root_out.WriteTObject(full,full.GetName())
+                    self.root_out.WriteTObject(low,out2d_name.replace('_2D','_LOW_2D'))
+                    self.root_out.WriteTObject(sig,out2d_name.replace('_2D','_SIG_2D'))
+                    self.root_out.WriteTObject(high,out2d_name.replace('_2D','_HIGH_2D'))
 
                     # Now do projections using the 2D
                     out_proj_name = '{p}_{r}_{t}_proj{x}{i}'
@@ -182,6 +185,11 @@ class Plotter(object):
                             if proj == 'Y':
                                 hcat = low if islice == 0 else (sig if islice == 1 else high)
                                 hslice = getattr(hcat,'Projection'+proj)(hname,1,hcat.GetNbinsX(),'e')
+                                ## Blind signal region
+                                if process == 'data_obs' and (islice in blinding):
+                                    for iBin in range(1,hslice.GetNbinsX()+1):
+                                        hslice.SetBinContent(iBin,0)
+                                        hslice.SetBinError(iBin,0)
                             else:
                                 start,stop = _get_start_stop(islice,slices['idxs']['LOW'])
                                 hsL = getattr(low,'Projection'+proj)('low',start,stop,'e')
@@ -202,6 +210,9 @@ class Plotter(object):
                                         hst = hsL
                                         idx = i
                                     elif i <= hsL.GetNbinsX()+hsS.GetNbinsX():
+                                        ## Blind signal region
+                                        if process == 'data_obs' and (1 in blinding):
+                                            continue
                                         hst = hsS
                                         idx = i-hsL.GetNbinsX()
                                     else:
@@ -281,15 +292,25 @@ class Plotter(object):
         Returns:
             None
         '''
-        for pr, _ in self.df.groupby(['process','region']):
-            process, region = pr[0], pr[1]
-            out_file_name = '{d}/base_figs/{p}_{r}_%s_2D'.format(d=self.dir,p=process,r=region)
-            make_pad_2D(outname=out_file_name%('prefit'), hist=self.Get('{p}_{r}_{t}'.format(p=process,r=region,t='prefit_2D')),
-                            year=self.twoD.options.year, savePDF=True, savePNG=True)
-            make_pad_2D(outname=out_file_name%('postfit'), hist=self.Get('{p}_{r}_{t}'.format(p=process,r=region,t='postfit_2D')),
-                            year=self.twoD.options.year, savePDF=True, savePNG=True)
+        # for pr, _ in self.df.groupby(['process','region']):
+        #     process, region = pr[0], pr[1]
+        #     out_file_name = '{d}/base_figs/{p}_{r}_%s_2D'.format(d=self.dir,p=process,r=region)
+        #     make_pad_2D(outname=out_file_name%('prefit'), hist=self.Get('{p}_{r}_{t}'.format(p=process,r=region,t='prefit_2D')),
+        #                 year=self.twoD.options.year, savePDF=True, savePNG=True)
+        #     make_pad_2D(outname=out_file_name%('postfit'), hist=self.Get('{p}_{r}_{t}'.format(p=process,r=region,t='postfit_2D')),
+        #                 year=self.twoD.options.year, savePDF=True, savePNG=True)
+        #     make_can('{d}/{p}_{r}_2D'.format(d=self.dir,p=process,r=region), [out_file_name%('prefit')+'.png', out_file_name%('postfit')+'.png'])
 
-            make_can('{d}/{p}_{r}_2D'.format(d=self.dir,p=process,r=region), [out_file_name%('prefit')+'.png', out_file_name%('postfit')+'.png'])
+        for process in ['data_obs','TotalBkg']:
+            for region in ['Pass','Fail']:
+                for slce in ['LOW','SIG','HIGH']:
+                    out_file_name = '{d}/base_figs/{p}_{r}_%s_{s}_2D'.format(d=self.dir,p=process,r=region,s=slce)
+                    make_pad_2D(outname=out_file_name%('prefit'), hist=self.Get('{p}_{r}_{t}_{s}_2D'.format(p=process,r=region,t='prefit',s=slce)),
+                                year=self.twoD.options.year, savePDF=True, savePNG=True)
+                    make_pad_2D(outname=out_file_name%('postfit'), hist=self.Get('{p}_{r}_{t}_{s}_2D'.format(p=process,r=region,t='postfit',s=slce)),
+                                year=self.twoD.options.year, savePDF=True, savePNG=True)
+                    make_can('{d}/{p}_{r}_{s}_2D'.format(d=self.dir,p=process,r=region,s=slce), [out_file_name%('prefit')+'.png', out_file_name%('postfit')+'.png'])
+
 
     def plot_projections(self, prefit=False):
         '''Plot comparisons of data and the post-fit background model and signal
@@ -836,7 +857,7 @@ def gen_projections(ledger, twoD, fittag, loadExisting=False, prefit=False):
     '''
     plotter = Plotter(ledger, twoD, fittag, loadExisting)
     print('\n\n*** Inside plot.py gen_projections, skipping plot_2D_distributions ***\n\n')
-    #plotter.plot_2D_distributions()
+    plotter.plot_2D_distributions()
     plotter.plot_projections(prefit)
     plotter.plot_pre_vs_post()
     # plotter.plot_transfer_funcs()
@@ -907,10 +928,22 @@ def _make_pull_plot(data, bkg, preVsPost=False):
             derr = 1
 
         sigma = math.sqrt(derr*derr + berr*berr)
-        if sigma != 0:
-            pull.SetBinContent(ibin, (pull.GetBinContent(ibin))/sigma)
-        else:
+        ## Don't draw pulls for bins which are probably just blinded
+        isBlindBin = False
+        ## For mass(a) on the x-axis
+        if data.Integral() == 0:
+            isBlindBin = True
+        ## For mass(H) on the x-axis
+        elif data.GetBinContent(ibin) == 0:
+            if data.GetBinCenter(ibin) > 110 and data.GetBinCenter(ibin) < 140:
+                if data.GetBinContent(ibin-1) == 0 or data.GetBinContent(ibin+1) == 0:
+                    isBlindBin = True
+
+        if sigma == 0 or isBlindBin:
             pull.SetBinContent(ibin, 0.0 )
+        else:
+            pull.SetBinContent(ibin, (pull.GetBinContent(ibin))/sigma)
+    ## End loop: for ibin in range(1,pull.GetNbinsX()+1)
 
     pull.SetFillColor(ROOT.kBlue)
     pull.SetTitle(";"+data.GetXaxis().GetTitle()+";({})/#sigma".format('Post-Pre' if preVsPost else 'Data-Bkg'))
