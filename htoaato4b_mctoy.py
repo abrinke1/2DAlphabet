@@ -66,7 +66,7 @@ if CAT.startswith('Lep'):
     FITLIST = ['1x1C']
 elif CAT.startswith('gg0l'):
     WP = 'WP40'
-    FITLIST = ['2s2C']
+    FITLIST = ['2m3C']
 elif CAT.startswith('VBFjj'):
     WP = 'WP40'
     FITLIST = ['2s2C']
@@ -169,6 +169,11 @@ def _working_json():
         working_json = working_json.replace('.json', '_'+SIGINJ+'.json')
     working_json = working_json.replace('.json', '_%s_%s.json' % (MHREG, MAREG))
     if ITOY >= 0: working_json = EOS_DIR+'/'+working_json
+
+    # dsamp = TOYSOURCE
+    # if ITOY == -1: dsamp += 'rounded'
+    # working_json = 'jsons/%s_Htoaato4b_%s_custom.json' % (CAT, dsamp)
+
     print('\n*** Using working_json = %s ***\n' % working_json)
     return working_json
         
@@ -208,9 +213,16 @@ def _generate_poly(fit_name, verb=False):
     oX = int(fit_name[0])  ## Polynomial order in x
     oY = int(fit_name[2])  ## Polynomial order in y
     opr = fit_name[1]      ## Operator (x, d, s, B)
-    assert (oX >= 0 and oY >= 0 and oX < 4 and oY < 4 and opr in ['x','d','s']), 'ERROR!!! Invalid fit %s' % fit_name
+    assert (oX >= 0 and oY >= 0 and oX < 4 and oY < 4 and opr in ['x','m','s','d']), 'ERROR!!! Invalid fit %s' % fit_name
     fit_poly = 'exp(@0)'  ## Overall normalization (exponential to ensure value > 0 with no double minima)
-    nTerm = (oX+1)*(oY+1)-1 if opr == 'x' else (oX+oY if opr == 'd' else (oX+oY+1 if opr == 's' else -99))
+    nTerms = {}
+    nTerms['x'] = (oX+1)*(oY+1)-1       ## All possible cross-terms
+    nTerms['m'] = oX+oY+1+(oX>1)+(oY>1) ## Most cross-terms, up to O(3), i.e. x*y, x*x*y, x*y*y
+    nTerms['s'] = oX+oY+1               ## Single cross-term, x*y
+    nTerms['d'] = oX+oY                 ## Decorrelated, no cross terms
+    nTerm = nTerms[opr]
+    if opr == 'm': assert (oX > 0 and oY > 0 and oX+oY > 3), '\nNo need to use the "m" fit option in %s! Just use "x"' % fit_name
+    if opr == 's': assert (oX > 0 and oY > 0 and oX+oY > 2), '\nNo need to use the "s" fit option in %s! Just use "x"' % fit_name
     ## Construct sum of absolute values of all polynomial terms
     sTerm = '1.0+'+'+'.join('abs(@%d)' % iT for iT in range(1,nTerm+1))
     fit_terms = []
@@ -221,10 +233,12 @@ def _generate_poly(fit_name, verb=False):
         fit_terms.append(('(@%d/(%s))' % (tY, sTerm.replace('+abs(@%d)' % tY,'')))+('*y'*(tY-oX)))
     if oX > 0 and oY > 0 and opr == 's':
         fit_terms.append('(@%d/(%s))*x*y' % (oX+oY+1, sTerm.replace('+abs(@%s)' % str(oX+oY+1),'')))
-    if oX > 0 and oY > 0 and opr == 'x':
+    if oX > 0 and oY > 0 and (opr == 'x' or opr == 'm'):
         tXY = oX+oY
         for tX in range(1, oX+1):
             for tY in range(1, oY+1):
+                if opr == 'm' and tX+tY > 3:
+                    continue
                 tXY += 1
                 fit_terms.append(('(@%d/(%s))' % (tXY, sTerm.replace('+abs(@%d)' % tXY,'')))+('*x'*tX)+('*y'*tY))
     if oX+oY > 0:
