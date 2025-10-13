@@ -5,17 +5,24 @@ TOYSOURCE=$2  ## Data or MC
 iCat=$3       ## Category to run
 iMA=$4        ## GEN a boson mass (must be in masses in htoaato4b_mctoy.py)
 YEAR=$5       ## Run2, 20XX, 2018, 2017, 2016
-FITS=($6)     ## Fit to use, e.g. 1x1C or 2s2C, or NxM for "Comb". Can use multiple below.
+FIT=$6        ## Fit to use, e.g. 1x1C or 2s2C. Use NxM for multiple fits.
 sInj=$7       ## Whether to inject signal (True/true/T/1 vs. False/false/F/0)
 NTOYGOF=100   ## Number of toys 2DAlphabet will run for goodness-of-fit test
-DATE="2025_08_15"
+DATE="2025_09_31"
 MHREG="pnet"
 MAREG="34a"
-#FITS=("0x0" "1d1C" "1x1C" "2d2C" "2s2C" "2x2C")  ## Needs to be a subset of FITLIST in htoaato4b_mctoy.py
+FITS=("${FIT}")
+if [[ ${FIT} == "NxM" ]]; then
+    ## Needs to be a subset of FITLIST in htoaato4b_mctoy.py
+    FITS=("0x0" "1d1C" "1x1C" "2d2C" "2s2C" "2x2C")
+fi
+
 doGOF=true
 doLIM=true
 doFitD=false
 doMDFit=true
+forceRegenerate=false
+useExistingCards=false
 
 if [[ $sInj == "True" || $sInj == "true" || $sInj == "T" || $sInj == 1 ]]; then
     SIGINJ=true
@@ -82,11 +89,11 @@ if [[ "${iToy}" == "-2" && ${TOYSOURCE} == "Data" ]]; then
 fi
 dmToy="${TOYSOURCE}${sToy}"
 
-INDIR="output/MCtoys"
-OUTDIR="output/MCtoys/Mergecards/MC${sToy}"
+INDIR="output/${DATE}/MCtoys"
+OUTDIR="output/${DATE}/MCtoys/Mergecards/MC${sToy}"
 if [[ ${TOYSOURCE} == "Data" ]]; then
-    INDIR="output/Datatoys"
-    OUTDIR="output/Datatoys/Mergecards/Data${sToy}"
+    INDIR="output/${DATE}/Datatoys"
+    OUTDIR="output/${DATE}/Datatoys/Mergecards/Data${sToy}"
 fi
 if [ "$iToy" -ge "0" ]; then
     INDIR="${EOS_DIR}/${INDIR}"
@@ -97,9 +104,13 @@ else
     ## Copy jsons to EOS_TMP_DIR
     mkdir -p jsons/toys/${DATE}/${iCat}/
     cp -r ${LOC_DIR}/jsons/toys/${DATE}/${iCat}/${YEAR} jsons/toys/${DATE}/${iCat}/
+    cp -r ${LOC_DIR}/jsons/*.json jsons/
 fi
-if [ ! -d ${OUTDIR}/${DATE}/${iCat}/${YEAR}/ ]; then
-    mkdir -p ${OUTDIR}/${DATE}/${iCat}/${YEAR}/
+if [ ! -d ${OUTDIR}/cards/ ]; then
+    mkdir -p ${OUTDIR}/cards/
+fi
+if [ ! -d ${OUTDIR}/${iCat}/${YEAR}/ ]; then
+    mkdir -p ${OUTDIR}/${iCat}/${YEAR}/
 fi
 
 
@@ -158,27 +169,27 @@ fi
 
 ## Make toys for each category
 FIT_DIR="fits_${iCat}_Htoaato4b_${MHREG}_${MAREG}_${WP}_${FITS[0]}_${YEAR}_${sToy}${SIN}"
-if [[ $iCat != *"Comb"* && $YEAR != "20XX" ]]; then
+if [[ $iCat != *"Comb"* && $YEAR != "20XX" && "$useExistingCards" = false ]]; then
     if [ "$SIGINJ" = true ]; then
-    	echo ">>>>>>>>>> Making Toy #${iToy} in category ${iCat} (${WP}) [${SIN:1}]"
-    	python3 ${LOC_DIR}/htoaato4b_mctoy.py "${iToy}" "${iCat}" "${TOYSOURCE}" "${YEAR}" "${SIN:1}"
-    	echo ">>>>>>>>>> Made Toy #${iToy} in category ${iCat} (${WP}) [${SIN:1}]"
+    	echo ">>>>>>>>>> Making Toy #${iToy} in category ${iCat} (${WP}) ${FITS[0]} [${SIN:1}]"
+	python3 ${LOC_DIR}/htoaato4b_mctoy.py "${iToy}" "${iCat}" "${TOYSOURCE}" "${YEAR}" "${FITS[0]}" "${SIN:1}"
+    	echo ">>>>>>>>>> Made Toy #${iToy} in category ${iCat} (${WP}) ${FITS[0]} [${SIN:1}]"
     else
 	## If not injecting signal, only need one 2DAlphabet directory for all mass points
     	cat_card="${INDIR}/${FIT_DIR}/mA_${iMA}_area/card.txt"
 	echo "Looking for ${cat_card}"
-	if [[ $iMA == "12" || ! -f ${cat_card} ]]; then
-    	    echo ">>>>>>>>>> Making Toy #${iToy} in category ${iCat} (${WP})"
-    	    python3 ${LOC_DIR}/htoaato4b_mctoy.py "${iToy}" "${iCat}" "${TOYSOURCE}" "${YEAR}"
-    	    echo ">>>>>>>>>> Made Toy #${iToy} in category ${iCat} (${WP})"
+	if [[ "$forceRegenerate" = true || $iMA == "12" || ! -f ${cat_card} ]]; then
+    	    echo ">>>>>>>>>> Making Toy #${iToy} in category ${iCat} (${WP}) ${FITS[0]}"
+	    python3 ${LOC_DIR}/htoaato4b_mctoy.py "${iToy}" "${iCat}" "${TOYSOURCE}" "${YEAR}" "${FITS[0]}"
+    	    echo ">>>>>>>>>> Made Toy #${iToy} in category ${iCat} (${WP}) ${FITS[0]}"
 	else
 	    echo "Found it!"
 	fi
     fi
     ## If running rounded or real data, copy fits workspace back to local area
-    if [[ "$iToy" -le "0" && -d output/${TOYSOURCE}toys/${FIT_DIR} ]]; then
-	echo "cp -r output/${TOYSOURCE}toys/${FIT_DIR} ${INDIR}/"
-	cp -r output/${TOYSOURCE}toys/${FIT_DIR} ${INDIR}/
+    if [[ "$iToy" -le "0" && -d output/${DATE}/${TOYSOURCE}toys/${FIT_DIR} ]]; then
+	echo "cp -r output/${DATE}/${TOYSOURCE}toys/${FIT_DIR} ${INDIR}/"
+	cp -r output/${DATE}/${TOYSOURCE}toys/${FIT_DIR} ${INDIR}/
     fi
 fi
 
@@ -295,16 +306,18 @@ for iFit in "${FITS[@]}"; do
 	continue
     fi
 
-    ## Combine cards, output to workspace
-    echo "combineCards.py $in_cards > ${OUTDIR}/combined_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.txt"
-    combineCards.py $in_cards > ${OUTDIR}/combined_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.txt
-    # echo "text2workspace.py --out ${OUTDIR}/workspace_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.root"
-    # text2workspace.py ${OUTDIR}/combined_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.txt --for-fits --no-wrappers --optimize-simpdf-constraints=cms --X-pack-asympows --use-histsum  --out ${OUTDIR}/workspace_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.root
+    if [ "$useExistingCards" = false ]; then
+	## Combine cards, output to workspace
+	echo "combineCards.py $in_cards > ${OUTDIR}/cards/combined_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.txt"
+	combineCards.py $in_cards > ${OUTDIR}/cards/combined_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.txt
+	# echo "text2workspace.py --out ${OUTDIR}/workspace_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.root"
+	# text2workspace.py ${OUTDIR}/cards/combined_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.txt --for-fits --no-wrappers --optimize-simpdf-constraints=cms --X-pack-asympows --use-histsum  --out ${OUTDIR}/workspace_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.root
+    fi
 
     ## Set blinding options
     runOpt="--run=both"
     fitOpt=""
-    if [[ ${TOYSOURCE} == "Data" ]]; then
+    if [[ ${TOYSOURCE} == "Data" && "$iToy" -lt "0" ]]; then
 	runOpt="--run=expected"
 	fitOpt="-t -1"
     fi
@@ -312,20 +325,22 @@ for iFit in "${FITS[@]}"; do
     ## GoodnessOfFit
     ## Only need to run GoF for one mA point, since signal strength is set to 0
     if [[ "$doGOF" = true && $iMA == "12" && ! "$SIGINJ" = true ]]; then
-        echo "combine -M GoodnessOfFit -d ${OUTDIR}/combined_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.txt --algo=saturated --fixedSignalStrength 0 -n .testGoodnessOfFit.${iCat}.mA_${iMA}.${iFit}${SIN}.${dmToy} --toysFrequentist -t ${NTOYGOF} -s 123456"
-        combine -M GoodnessOfFit -d ${OUTDIR}/combined_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.txt --algo=saturated --fixedSignalStrength 0 -n .testGoodnessOfFit.${iCat}.mA_${iMA}.${iFit}${SIN}.${dmToy} --toysFrequentist -t ${NTOYGOF} -s 123456
+        echo "combine -M GoodnessOfFit -d ${OUTDIR}/cards/combined_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.txt --algo=saturated --fixedSignalStrength 0 -n .testGoodnessOfFit.${iCat}.mA_${iMA}.${iFit}${SIN}.${dmToy} --toysFrequentist -t ${NTOYGOF} -s 123456"
+        combine -M GoodnessOfFit -d ${OUTDIR}/cards/combined_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.txt --algo=saturated --fixedSignalStrength 0 -n .testGoodnessOfFit.${iCat}.mA_${iMA}.${iFit}${SIN}.${dmToy} --toysFrequentist -t ${NTOYGOF} -s 123456
+        echo "combine -M GoodnessOfFit -d ${OUTDIR}/cards/combined_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.txt --algo=saturated --fixedSignalStrength 0 -n .testGoodnessOfFit.${iCat}.mA_${iMA}.${iFit}${SIN}.${dmToy}"
+        combine -M GoodnessOfFit -d ${OUTDIR}/cards/combined_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.txt --algo=saturated --fixedSignalStrength 0 -n .testGoodnessOfFit.${iCat}.mA_${iMA}.${iFit}${SIN}.${dmToy}
     fi
 	
     if [[ "$doLIM" = true && ! "$SIGINJ" = true ]]; then
 	## AsymptoticLimits
-	echo "combine -M AsymptoticLimits ${OUTDIR}/combined_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.txt ${runOpt} --cminDefaultMinimizerStrategy 0 --cminDefaultMinimizerTolerance=0.0001 -n .testAsymptoticLimits.${iCat}.mA_${iMA}.${iFit}${SIN}.${dmToy}"
-	combine -M AsymptoticLimits ${OUTDIR}/combined_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.txt ${runOpt} --cminDefaultMinimizerStrategy 0 --cminDefaultMinimizerTolerance=0.0001 -n .testAsymptoticLimits.${iCat}.mA_${iMA}.${iFit}${SIN}.${dmToy}
+	echo "combine -M AsymptoticLimits ${OUTDIR}/cards/combined_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.txt ${runOpt} --cminDefaultMinimizerStrategy 0 --cminDefaultMinimizerTolerance=0.0001 -n .testAsymptoticLimits.${iCat}.mA_${iMA}.${iFit}${SIN}.${dmToy}"
+	combine -M AsymptoticLimits ${OUTDIR}/cards/combined_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.txt ${runOpt} --cminDefaultMinimizerStrategy 0 --cminDefaultMinimizerTolerance=0.0001 -n .testAsymptoticLimits.${iCat}.mA_${iMA}.${iFit}${SIN}.${dmToy}
     fi
 
     if [[ "$doFitD" = true ]]; then
 	## FitDiagnostics
-	echo "combine -M FitDiagnostics ${OUTDIR}/combined_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.txt --setParameterRanges r=0.0,1.0 --robustFit 1 --minos all -n .testFitDiagnostics.${iCat}.mA_${iMA}.${iFit}${SIN}.${dmToy}"
-	combine -M FitDiagnostics ${OUTDIR}/combined_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.txt --setParameterRanges r=0.0,1.0 --robustFit 1 --minos all -n .testFitDiagnostics.${iCat}.mA_${iMA}.${iFit}${SIN}.${dmToy}
+	echo "combine -M FitDiagnostics ${OUTDIR}/cards/combined_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.txt --setParameterRanges r=0.0,1.0 --robustFit 1 --minos all -n .testFitDiagnostics.${iCat}.mA_${iMA}.${iFit}${SIN}.${dmToy}"
+	combine -M FitDiagnostics ${OUTDIR}/cards/combined_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.txt --setParameterRanges r=0.0,1.0 --robustFit 1 --minos all -n .testFitDiagnostics.${iCat}.mA_${iMA}.${iFit}${SIN}.${dmToy}
     fi
 
     if [[ "$doMDFit" = true ]]; then
@@ -339,8 +354,8 @@ for iFit in "${FITS[@]}"; do
 	    SCAN="--setParameterRanges r=-0.0005,0.4005 --points 401"
 	fi
 
-	echo "combine -M MultiDimFit ${OUTDIR}/combined_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.txt --algo grid ${SCAN} --floatOtherPOIs=1 --preFitValue=0 --cminDefaultMinimizerStrategy 0 --robustFit 1 -n .testMultiDimFit.${iCat}.mA_${iMA}.${iFit}${SIN}.${dmToy}"
-	combine -M MultiDimFit ${OUTDIR}/combined_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.txt --algo grid ${SCAN} --floatOtherPOIs=1 --preFitValue=0 --cminDefaultMinimizerStrategy 0 --robustFit 1 -n .testMultiDimFit.${iCat}.mA_${iMA}.${iFit}${SIN}.${dmToy}
+	echo "combine -M MultiDimFit ${OUTDIR}/cards/combined_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.txt --algo grid ${SCAN} --floatOtherPOIs=1 --preFitValue=0 --cminDefaultMinimizerStrategy 0 --robustFit 1 -n .testMultiDimFit.${iCat}.mA_${iMA}.${iFit}${SIN}.${dmToy}"
+	combine -M MultiDimFit ${OUTDIR}/cards/combined_${iCat}_mA_${iMA}_${iFit}${SIN}_${YEAR}.txt --algo grid ${SCAN} --floatOtherPOIs=1 --preFitValue=0 --cminDefaultMinimizerStrategy 0 --robustFit 1 -n .testMultiDimFit.${iCat}.mA_${iMA}.${iFit}${SIN}.${dmToy}
     fi
 
     ## Move files to EOS
@@ -348,8 +363,8 @@ for iFit in "${FITS[@]}"; do
 	echo "mv *.test*.${iCat}.mA_${iMA}.${iFit}${SIN}.${dmToy}*root ${EOS_OUT_DIR}"
 	mv *.test*.${iCat}.mA_${iMA}.${iFit}${SIN}.${dmToy}*root ${EOS_OUT_DIR}
     else
-	echo "mv *.test*.${iCat}.mA_${iMA}.${iFit}${SIN}.${dmToy}*root ${OUTDIR}/${DATE}/${iCat}/${YEAR}/"
-	mv *.test*.${iCat}.mA_${iMA}.${iFit}${SIN}.${dmToy}*root ${OUTDIR}/${DATE}/${iCat}/${YEAR}/
+	echo "mv *.test*.${iCat}.mA_${iMA}.${iFit}${SIN}.${dmToy}*root ${OUTDIR}/${iCat}/${YEAR}/"
+	mv *.test*.${iCat}.mA_${iMA}.${iFit}${SIN}.${dmToy}*root ${OUTDIR}/${iCat}/${YEAR}/
     fi
     echo "     <<<<< All done with mA = ${iMA}"
 
