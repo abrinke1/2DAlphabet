@@ -15,7 +15,7 @@ VVERBOSE = False
 VVVERBOSE = False
 DELETE_OLD = True  ## Remove old files
 TEST = False  ## Append '_test' to outputs
-DATE = '2025_08_15'
+DATE = '2025_09_31'
 
 CAT = str(sys.argv[1])  ## gg0lIncl/Hi/Lo, VBFjjIncl/Hi/Lo, LepHi/Lo
 CATL = CAT  ## Modified category name
@@ -342,13 +342,15 @@ def toys_generator(hist, nToy, output_dir, root_cmd, h_sigs={}, PF=None):
         toy_hist_sig = {}
         for key in avg_toy_hist_sig.keys():
             toy_hist_sig[key] = toy_hist.Clone(toy_hist.GetName().replace('toy%d' % iT, 'toy%d_%s' % (iT, key)))
+        sumSq = 0
         for iX in range(1, hist.GetNbinsX()+1):
             for iY in range(1, hist.GetNbinsY()+1):
                 expected = hist.GetBinContent(iX,iY)
-                #print('Histogram %s bin (%d,%d) = (%.1f,%.1f) has expected %.3f' % (hist.GetName(), iX, iY, hist.GetXaxis().GetBinCenter(iX), hist.GetYaxis().GetBinCenter(iY), expected))
                 fluctuated = np.random.poisson(expected)
                 toy_hist.SetBinContent(iX,iY,fluctuated)
                 toy_hist.SetBinError(iX,iY,np.sqrt(fluctuated))
+                sumSq += pow(fluctuated - expected, 2)
+                #print('Histogram %s bin (%d,%d) = (%.1f,%.1f) has expected %.3f, fluctuated = %.1f' % (hist.GetName(), iX, iY, hist.GetXaxis().GetBinCenter(iX), hist.GetYaxis().GetBinCenter(iY), expected, fluctuated))
                 for key in toy_hist_sig.keys():
                     mA = key[3:5]
                     sBr = int(key[-3:])*0.001
@@ -357,6 +359,7 @@ def toys_generator(hist, nToy, output_dir, root_cmd, h_sigs={}, PF=None):
                     fluc_sig = np.random.poisson(exp_sig)
                     toy_hist_sig[key].SetBinContent(iX,iY,fluc_sig)
                     toy_hist_sig[key].SetBinError(iX,iY,np.sqrt(fluc_sig))
+        #print('Hist %s integral %.1f, toy %.1f (%.2f sigma), sumSq = %.1f (%.3f of norm)' % (hist.GetName(), hist.Integral(), toy_hist.Integral(), (toy_hist.Integral() - hist.Integral()) / np.sqrt(hist.Integral()), sumSq, sumSq / hist.Integral()))
         avg_toy_hist.Add(toy_hist)
         for key in toy_hist_sig.keys():
             avg_toy_hist_sig[key].Add(toy_hist_sig[key])

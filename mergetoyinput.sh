@@ -7,23 +7,26 @@
 #########################################################
 
 iYear=$1  ## 2016preVFP, 2016postVFP, 2017, or 2018
-DATE="2025_08_15"
+iSyst=$2
 source config/user.config  ## Loads USER, LOC_DIR, and EOS_DIR
-OUTDIR="${EOS_DIR}/raw_inputs/${DATE}"
 
 if [[ $iYear != "2016preVFP" && $iYear != "2016postVFP" && $iYear != "2017" && $iYear != "2018" ]]; then
     echo "Invalid year $iYear! Quitting."
     exit
 fi
+if [[ $iSyst != "True" && $iSyst != "False" ]]; then
+    echo "Invalid year $iSyst! Quitting."
+    exit
+fi
 
 ## Prepare inputs
-echo " > Merging categories (gg0lVHi gg0lVLo HadXHi HadXLo LepHiT LepLo)"
-for CAT in gg0lVHi gg0lVLo HadXHi HadXLo LepHiT LepLo; do
+echo " > Merging categories (gg0lVHi gg0lVLo HadXHi HadXLo LepHiT LepLo VjjTLo VjjHi400 VBFjjHiPtLo VBFjjHiPtHi)"
+for CAT in gg0lVHi gg0lVLo HadXHi HadXLo LepHiT LepLo VjjTLo VjjHi400 VBFjjHiPtLo VBFjjHiPtHi; do
     #for YEAR in 2016preVFP 2016postVFP 2017 2018; do
     for YEAR in $iYear; do
 	## Producing "Incl" categories also produces Hi/Lo plots
-	echo " > python3 merge_files_mctoy.py ${CAT} ${YEAR} >& merge_files_${CAT}_${YEAR}.txt &"
-	python3 merge_files_mctoy.py ${CAT} ${YEAR} >& merge_files_${CAT}_${YEAR}.txt &
+	echo " > python3 merge_files_mctoy.py ${CAT} ${YEAR} ${iSyst} >& merge_files_${CAT}_${YEAR}_${iSyst}.txt &"
+	python3 merge_files_mctoy.py ${CAT} ${YEAR} ${iSyst} >& merge_files_${CAT}_${YEAR}_${iSyst}.txt &
     done
 done
 

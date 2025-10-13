@@ -14,10 +14,17 @@ R.gStyle.SetOptStat(0)  ## Don't display stat boxes
 ## User configuration
 VERBOSE = False
 VVERBOSE = False
-DATE  = '2025_08_15'
+DATE_RAW = '2025_08_15'
+DATE_OUT = '2025_09_31'
 COMB  = sys.argv[1]  ## Run2 or 2016
 #CATS = []  ## If empty, merge all categories
-CATS = ['LepHiT','LepLo','gg0lVHi','gg0lVLo','HadXHi','HadXLo']
+
+#CATS = ['LepHiT','LepLo','gg0lVHi','gg0lVLo','HadXHi','HadXLo','VjjTLo','VjjHi400','VBFjjHiPtLo','VBFjjHiPtHi']
+#CATS = ['gg0lVHi','gg0lVLo']
+CATS = ['LepHiT']
+
+#CATS = ['gg0lVHi','gg0lVLo','HadXHi','HadXLo']
+#CATS = ['VjjTLo']
 #CATS = ['gg0lHi','gg0lLo','VBFjjHiPtHi','VBFjjHiPtLo','VBFjjLoPtHi','VBFjjLoPtHi']
 #CATS = ['VjjHi','VjjLo','VjjHi350','VjjLo350','VjjHi400','VjjLo400']
 #CATS = ['tt0l1b','tt0l0b','ZvvHi','ZvvLo']
@@ -37,9 +44,10 @@ YRX = YEARS[-1]
 
 eos_from_config = [eos for eos in (open('config/user.config','r')).readlines() if eos.startswith('EOS_DIR=')]
 EOS_DIR = eos_from_config[0].replace('EOS_DIR=','').replace('\n','')
-IN_DIR_A = EOS_DIR+'/raw_inputs/%s/' % DATE
-IN_DIR_B = EOS_DIR+'/plots/%s/' % DATE
-
+IN_DIR_A = EOS_DIR+'/raw_inputs/%s/' % DATE_RAW
+IN_DIR_B = EOS_DIR+'/raw_inputs/%s/' % DATE_OUT
+IN_DIR_C = EOS_DIR+'/plots/%s/' % DATE_OUT
+IN_DIRS = [IN_DIR_A, IN_DIR_B, IN_DIR_C] if (DATE_RAW != DATE_OUT) else [IN_DIR_A, IN_DIR_C]
 
 def main():
 
@@ -49,7 +57,7 @@ def main():
     print('to avoid "list is accessing an object already deleted" error! - AWB 2024.06.24\n')
     print('See https://root-forum.cern.ch/t/error-in-tlist-clear-a-list-is-accessing-an-object-already-deleted-list-name-tlist-when-opening-a-file-created-by-root-6-30-using-root-6-14-09/57588/1')
     
-    for top_dir in [IN_DIR_A, IN_DIR_B]:
+    for top_dir in IN_DIRS:
         print('\n\n*** Merging categories in %s ***' % top_dir)
         for o_dir in [top_dir+sub_dir for sub_dir in os.listdir(top_dir)]:
             do_merge = (len(CATS) == 0)
@@ -61,6 +69,8 @@ def main():
             if not do_merge:
                 continue
             RAW_IN = ('/raw_inputs/' in o_dir and not '2D_in_merged_' in o_dir)
+            if RAW_IN and DATE_RAW in o_dir and not DATE_OUT in o_dir:
+                o_dir = o_dir.replace(DATE_RAW,DATE_OUT)
             ## Raw input files in leptonic categories have X4b WP sub-directory
             if RAW_IN and ('/Zll' in o_dir or '/Wlv' in o_dir or '/ttb' in o_dir):
                 o_dir = o_dir+'/WP60'
@@ -74,6 +84,8 @@ def main():
             f_list = {}
             for yr in YEARS:
                 in_dir = o_dir.replace('/'+COMB+'/','/'+yr+'/')
+                if RAW_IN and DATE_OUT in in_dir and not DATE_RAW in in_dir:
+                    in_dir = in_dir.replace(DATE_OUT, DATE_RAW)
                 f_list[yr] = [in_dir+fl for fl in os.listdir(in_dir) if fl.endswith(yr+'.root')]
             for yrA in YEARS:
                 for yrB in YEARS:
@@ -98,7 +110,10 @@ def main():
                             hn_in_list.append(key.GetName())
                     for hn_in in hn_in_list:
                         if hn_in.endswith('_Nom'):
-                            hn_ins[yr]['Nom'].append(hn_in)
+                            if 'WP40' in hn_in and 'VjjHi400' in fn_in:
+                                print('Skipping %s in %s' % (hn_in, fn_in))
+                            else:
+                                hn_ins[yr]['Nom'].append(hn_in)
                     ## Only include systematics for signal MC
                     if 'Htoaato4b' in fn_in:
                         for hn_in in hn_in_list:
@@ -196,7 +211,7 @@ def main():
 
         ## End loop: for o_dir in [top_dir+sub_dir for sub_dir in os.listdir(top_dir)]
         print('\n*** Done with categories in %s ***\n' % top_dir)
-    ## End loop: for top_dir in [IN_DIR_A, IN_DIR_B]
+    ## End loop: for top_dir in IN_DIRS
 
     print('\n\nAll done!')
     

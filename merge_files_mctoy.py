@@ -23,7 +23,8 @@ MASSESA  = ['12']+[str(mA*5) for mA in range(3,13)]
 #MAREGS   = ['34a', '34d', '4a']
 MHREGS   = ['pnet']
 MAREGS   = ['34a']
-DATE     = '2025_08_15'
+IN_DATE  = '2025_08_15'
+OUT_DATE = '2025_09_31'
 LUMIS    = {'2016preVFP': 19.52, '2016postVFP': 16.81, '2017': 41.48, '2018': 59.83}
 eos_from_config = [eos for eos in (open('config/user.config','r')).readlines() if eos.startswith('EOS_DIR=')]
 EOS_DIR = eos_from_config[0].replace('EOS_DIR=','').replace('\n','')
@@ -32,8 +33,9 @@ ONE_SAMP = ''  ## Run over a single sample matching a string, e.g. 'VBFHtoaato4b
 CATS_IN = {}
 CAT_OUT = sys.argv[1]  ## gg0lIncl, LepHi, LepLo, etc.
 YEAR    = sys.argv[2]  ## 2016preVFP, 2016postVFP, 2017, 2018
+DO_SYST = (not sys.argv[3][0] in ['F','f'])  ## False to skip systematics (faster)
 CAT_INS = [CAT_OUT]
-IN_DIR = EOS_DIR+'/raw_inputs/%s/' % DATE
+IN_DIR = EOS_DIR+'/raw_inputs/%s/' % IN_DATE
 if not os.path.exists('logs'):
     os.system('mkdir logs')
 
@@ -59,6 +61,8 @@ if IS_HAD:
         CAT_INS = ['VBFjjHiPtHi','VjjHi400']
     if CAT_OUT == 'HadXLo':
         CAT_INS = ['VBFjjHiPtLo','VjjLo400','tt0l0b']
+    if CAT_OUT == 'VjjTLo':
+        CAT_INS = ['VjjLo400','tt0l0b']
     for cat in CAT_INS:
         CATS_IN[cat] = {}
         CATS_IN[cat]['sigs'] = [sig+'toaato4b' for sig in HADSIGS]
@@ -117,12 +121,12 @@ else:
 
 
 ## For use as input to Haa4b_makeMCtoy.py
-OUT_DIR = IN_DIR+'2D_in_merged_'+CAT_OUT+'/'+YEAR+'/'
+OUT_DIR = IN_DIR.replace(IN_DATE,OUT_DATE)+'2D_in_merged_'+CAT_OUT+'/'+YEAR+'/'
 ## For use as input to htoaato4b_mctoy.py
 OUT_DIRS = {}
 WP_CUTS = {}
 for cat in [CAT_OUT]+CAT_INS:
-    OUT_DIRS[cat] = EOS_DIR+'/plots/'+DATE+'/'+cat+'/'+YEAR+'/'
+    OUT_DIRS[cat] = EOS_DIR+'/plots/'+OUT_DATE+'/'+cat+'/'+YEAR+'/'
     if cat.startswith('gg0l') or cat.startswith('VBFjj'):
         WP_CUTS[cat] = ['WP40', 'WP60']  ## Use WP60 background MC to model WP40
     elif (cat == 'VVBFjj' or cat.startswith('HadX')):
@@ -215,6 +219,8 @@ def main():
                     in_file = R.TFile(in_file_str, 'open')
                     in_hists_all = []
                     for key in in_file.GetListOfKeys():
+                        if (not DO_SYST) and ('Htoaato4b' in samp) and (not key.GetName().endswith('_Nom')):
+                            continue
                         if not key.GetName() in in_hists_all:
                             in_hists_all.append(key.GetName())
                     if len(in_hists_all) == 0:
@@ -228,7 +234,7 @@ def main():
                         print('  * %d histograms, %d systematic variations' % (len(in_hists), len(in_systs)))
                         if not 'Htoaato4b' in samp:
                             print('    (Only using nominal distribution for non-signal)')
-                    if not 'Htoaato4b' in samp:
+                    if (not 'Htoaato4b' in samp) or (not DO_SYST):
                         in_systs = ['Nom']
                     else:
                         with open('logs/systs_%s_%s_%s_%s.txt' % (cat, samp, wp, YEAR), 'w') as fsyst:
