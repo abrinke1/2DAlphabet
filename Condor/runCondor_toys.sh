@@ -4,10 +4,13 @@
 
 # Number of Toys
 Nmin=-2
-Nmax=100
-## Fit transfer function
-FIT="1x1C"
-#FIT="2s2C"
+Nmax=20
+## Fit transfer functions
+#FITS=("0x0C" "1d1C" "1x1C" "2s2C" "2x2C" "3m3C")
+#FITS=("0x0C" "1d1C" "1x1C" "2s2C")
+FITS=("2s2C")
+#FITS=("NxM")
+
 # Condor log directory
 LOG_DIR="log"
 OUT_DIR="out"
@@ -50,43 +53,50 @@ mkdir "$ERR_DIR"
 # Loop over toy jobs from Nmin up to Nmax
 for ((ii=Nmin; ii<Nmax; ii++)); do
     ## Loop over years
-    for iYear in Run2; do
-    #for iYear in 2016 2017 2018; do
+    #for iYear in Run2; do
+    for iYear in 2016 2017 2018; do
     #for iYear in 20XX; do
 	# Loop over categories
-	for iCat in LepLo LepHiT; do
-	#for iCat in HadXHi HadXLo; do
-	#for iCat in gg0lVHi gg0lVLo; do
+	#for iCat in VjjHi400 VjjTLo VBFjjHiPtHi VBFjjHiPtLo; do ## HadXHi HadXLo; do
+	for iCat in gg0lVHi gg0lVLo; do
+	#for iCat in LepHiT LepLo; do
 	    # Loop over Data and MC
-	    for iDM in Data MC; do
+	    #for iDM in Data MC; do
+	    for iDM in Data; do
 		if [[ "${ii}" == "-2" && "${iDM}" == "MC" ]]; then
 		    continue
 		fi
-		for iMA in 12; do
+		#for iMA in 12; do
 		#for iMA in 15 20 25 30 35 40 45 50 55 60; do
-		#for iMA in 12 15 20 25 30 35 40 45 50 55 60; do
-		    for SINJ in "false" "true"; do
-			SH_OUT="2D_toy_job_${iCat}_${iDM}_${ii}_${iMA}_${iYear}_${FIT}_${SINJ}.sh"
-			SUB_OUT="2D_toy_job_${iCat}_${iDM}_${ii}_${iMA}_${iYear}_${FIT}_${SINJ}.sub"
+		for iMA in 12 15 20 25 30 35 40 45 50 55 60; do
+		    #for SINJ in "false" "true"; do
+		    for SINJ in "true"; do
+			if [[ "${ii}" == "-2" && "${iDM}" == "Data" && "${SINJ}" == "true" ]]; then
+			    continue
+			fi
+			for FIT in "${FITS[@]}"; do
+			    SH_OUT="2D_toy_job_${iCat}_${iDM}_${ii}_${iMA}_${iYear}_${FIT}_${SINJ}.sh"
+			    SUB_OUT="2D_toy_job_${iCat}_${iDM}_${ii}_${iMA}_${iYear}_${FIT}_${SINJ}.sub"
 
-			# Create .sh file, replacing NTOY with the index, DMC with Data or MC, and CAT with the category
-			sed "s/CAT/${iCat}/g"   "$SH_TEMPLATE" > "tmp1.sh"
-			sed "s/DMC/${iDM}/g"    "tmp1.sh" > "tmp2.sh"
-			sed "s/NTOY/${ii}/g"    "tmp2.sh" > "tmp3.sh"
-			sed "s/MASSA/${iMA}/g"  "tmp3.sh" > "tmp4.sh"
-			sed "s/YEAR/${iYear}/g" "tmp4.sh" > "tmp5.sh"
-			sed "s/FIT/${FIT}/g"    "tmp5.sh" > "tmp6.sh"
-			sed "s/SINJ/${SINJ}/g"  "tmp6.sh" > "$SH_OUT"
-			chmod +x "$SH_OUT"
+			    # Create .sh file, replacing NTOY with the index, DMC with Data or MC, and CAT with the category
+			    sed "s/CAT/${iCat}/g"   "$SH_TEMPLATE" > "tmp1.sh"
+			    sed "s/DMC/${iDM}/g"    "tmp1.sh" > "tmp2.sh"
+			    sed "s/NTOY/${ii}/g"    "tmp2.sh" > "tmp3.sh"
+			    sed "s/MASSA/${iMA}/g"  "tmp3.sh" > "tmp4.sh"
+			    sed "s/YEAR/${iYear}/g" "tmp4.sh" > "tmp5.sh"
+			    sed "s/FIT/${FIT}/g"    "tmp5.sh" > "tmp6.sh"
+			    sed "s/SINJ/${SINJ}/g"  "tmp6.sh" > "$SH_OUT"
+			    chmod +x "$SH_OUT"
 
-			# Create .sub file, replacing reference to original .sh with the modified .sh name
-			sed "s/2D_toy_template.sh/${SH_OUT}/g" "$SUB_TEMPLATE" > "$SUB_OUT"
+			    # Create .sub file, replacing reference to original .sh with the modified .sh name
+			    sed "s/${SH_TEMPLATE}/${SH_OUT}/g" "$SUB_TEMPLATE" > "$SUB_OUT"
 
-			#echo "Created $SH_OUT and $SUB_OUT"
+			    #echo "Created $SH_OUT and $SUB_OUT"
   
-			#echo "Submitting jobs for Cat ${iCat} ${iDM} Toy ${ii}"
-			echo "condor_submit 2D_toy_job_${iCat}_${iDM}_${ii}_${iMA}_${iYear}_${FIT}_${SINJ}.sub"
-			condor_submit 2D_toy_job_${iCat}_${iDM}_${ii}_${iMA}_${iYear}_${FIT}_${SINJ}.sub
+			    #echo "Submitting jobs for Cat ${iCat} ${iDM} Toy ${ii}"
+			    echo "condor_submit 2D_toy_job_${iCat}_${iDM}_${ii}_${iMA}_${iYear}_${FIT}_${SINJ}.sub"
+			    condor_submit 2D_toy_job_${iCat}_${iDM}_${ii}_${iMA}_${iYear}_${FIT}_${SINJ}.sub
+			done
 		    done
 		done
 	    done
