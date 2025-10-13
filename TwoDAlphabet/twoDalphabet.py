@@ -352,7 +352,7 @@ class TwoDAlphabet:
             # systematic_analyzer_cmd = 'python $CMSSW_BASE/src/HiggsAnalysis/CombinedLimit/test/systematicsAnalyzer.py card.txt --all -f html > systematics_table.html'
             # execute_cmd(systematic_analyzer_cmd)    
 
-    def StdPlots(self, subtag, ledger=None, prefit=False):
+    def StdPlots(self, subtag, ledger=None, prefit=False, doSig=False):
         '''
         Args:
             prefit (bool): If True, plots the prefit distributions instead of postfit. Defaults to False.
@@ -370,7 +370,8 @@ class TwoDAlphabet:
             )
             plot.gen_post_fit_shapes()
             plot.gen_projections(ledger, self, 'b', prefit)
-            plot.gen_projections(ledger, self, 's', prefit)
+            if doSig:
+                plot.gen_projections(ledger, self, 's', prefit)
             
     def GetParamsOnMatch(self, regex='', subtag='', b_or_s='b'):
         out = {}
@@ -815,14 +816,28 @@ def MakeCard(ledger, subtag, workspaceDir, stg):
         kmax += 3
     elif ('_2d2' in stg or '_2s1' in stg or '_1s2' in stg):
         kmax += 4
-    elif ('_2s2' in stg or '_2x1' in stg or '_1x2' in stg):
+    elif ('_2s2' in stg or '_2x1' in stg or '_1x2' in stg or '_3s1' in stg or '_1s3' in stg):
         kmax += 5
-    elif '_2s3' in stg:
+    elif ('_2s3' in stg or '_3m1' in stg or '_1m3' in stg or '_3s2' in stg or '_2s3' in stg):
         kmax += 6
-    elif '_2m2' in stg or '_2s4' in stg:
+    elif '_2m2' in stg or '_3s3' in stg or '_4s2' in stg or '_2s4' in stg:
         kmax += 7
-    elif '_2x2' in stg or '_2m3' in stg:
+    elif '_2x2' in stg or '_3m2' in stg or '_2m3' in stg or '_4s3' in stg or '_3s4' in stg:
         kmax += 8
+    elif '_3m3' in stg or '_4m2' in stg or '_2m4' in stg or '_4s4' in stg:
+        kmax += 9
+    elif '_4m3' in stg or '_3m4' in stg:
+        kmax += 10
+    elif '_3x2' in stg or '_2x3' in stg or '_4q2' in stg or '_2q4' in stg or '_4m4' in stg:
+        kmax += 11
+    elif '_3q3' in stg:
+        kmax += 12
+    elif '_4q3' in stg or '_3q4' in stg:
+        kmax += 13
+    elif '_4x2' in stg or '_2x4' in stg or '_4q4' in stg:
+        kmax += 14
+    elif '_3x3' in stg:
+        kmax += 15
     else: assert False, '\n\nInvalid fit function %s in MakeCard in twoDalphabet.py' % stg
     if 'smr_' in stg:
         kmax += 4

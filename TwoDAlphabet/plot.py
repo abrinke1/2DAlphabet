@@ -282,7 +282,7 @@ class Plotter(object):
         process_order_df = pandas.DataFrame({'process':process_order})
         return process_order_df.merge(df,on='process',how='inner')
 
-    def plot_2D_distributions(self):
+    def plot_2D_distributions(self, _savePDF=True, _savePNG=False):
         '''Take the saved 2D distributions and plot them together on sub-pads
         based on process and region groupings.
 
@@ -296,23 +296,23 @@ class Plotter(object):
         #     process, region = pr[0], pr[1]
         #     out_file_name = '{d}/base_figs/{p}_{r}_%s_2D'.format(d=self.dir,p=process,r=region)
         #     make_pad_2D(outname=out_file_name%('prefit'), hist=self.Get('{p}_{r}_{t}'.format(p=process,r=region,t='prefit_2D')),
-        #                 year=self.twoD.options.year, savePDF=True, savePNG=True)
+        #                 year=self.twoD.options.year, savePDF=_savePDF, savePNG=_savePNG)
         #     make_pad_2D(outname=out_file_name%('postfit'), hist=self.Get('{p}_{r}_{t}'.format(p=process,r=region,t='postfit_2D')),
-        #                 year=self.twoD.options.year, savePDF=True, savePNG=True)
-        #     make_can('{d}/{p}_{r}_2D'.format(d=self.dir,p=process,r=region), [out_file_name%('prefit')+'.png', out_file_name%('postfit')+'.png'])
+        #                 year=self.twoD.options.year, savePDF=_savePDF, savePNG=_savePNG)
+        #     make_can('{d}/{p}_{r}_2D'.format(d=self.dir,p=process,r=region), [out_file_name%('prefit')+'.png', out_file_name%('postfit')+'.png'], 0, 0, _savePDF, _savePNG)
 
         for process in ['data_obs','TotalBkg']:
             for region in ['Pass','Fail']:
                 for slce in ['LOW','SIG','HIGH']:
                     out_file_name = '{d}/base_figs/{p}_{r}_%s_{s}_2D'.format(d=self.dir,p=process,r=region,s=slce)
                     make_pad_2D(outname=out_file_name%('prefit'), hist=self.Get('{p}_{r}_{t}_{s}_2D'.format(p=process,r=region,t='prefit',s=slce)),
-                                year=self.twoD.options.year, savePDF=True, savePNG=True)
+                                year=self.twoD.options.year, savePDF=_savePDF, savePNG=_savePNG)
                     make_pad_2D(outname=out_file_name%('postfit'), hist=self.Get('{p}_{r}_{t}_{s}_2D'.format(p=process,r=region,t='postfit',s=slce)),
-                                year=self.twoD.options.year, savePDF=True, savePNG=True)
-                    make_can('{d}/{p}_{r}_{s}_2D'.format(d=self.dir,p=process,r=region,s=slce), [out_file_name%('prefit')+'.png', out_file_name%('postfit')+'.png'])
+                                year=self.twoD.options.year, savePDF=_savePDF, savePNG=_savePNG)
+                    make_can('{d}/{p}_{r}_{s}_2D'.format(d=self.dir,p=process,r=region,s=slce), [out_file_name%('prefit')+'.pdf', out_file_name%('postfit')+'.pdf'], 0, 0, _savePDF, _savePNG)
 
 
-    def plot_projections(self, prefit=False):
+    def plot_projections(self, prefit=False, _savePDF=False, _savePNG=False):
         '''Plot comparisons of data and the post-fit background model and signal
         using the 1D projections. Canvases are grouped based on projection axis.
         The canvas rows are separate selection regions while the columns 
@@ -360,7 +360,7 @@ class Plotter(object):
                         make_pad_1D(out_pad_name, data=this_data, bkgs=these_bkgs, signals=these_signals,
                                     subtitle=slice_str, totalBkg=this_totalbkg,
                                     logyFlag=logyFlag, year=self.twoD.options.year, preVsPost=False,
-                                    extraText='', savePDF=True, savePNG=True, ROOTout=False)
+                                    extraText='', savePDF=_savePDF, savePNG=_savePNG, ROOTout=False)
                         pads = pads.append({'pad':out_pad_name+'.png', 'region':region, 'proj':projn, 'logy':logyFlag}, ignore_index=True)
 
         for logy in ['','_logy']:
@@ -373,9 +373,9 @@ class Plotter(object):
 
                 these_pads = these_pads.sort_values(by=['region','proj'])['pad'].to_list()
                 out_can_name = '{d}/{proj}{logy}'.format(d=self.dir, proj=proj, logy=logy)
-                make_can(out_can_name, these_pads)
+                make_can(out_can_name, these_pads, 0, 0, True, _savePNG)
         
-    def plot_pre_vs_post(self):
+    def plot_pre_vs_post(self, _savePDF=False, _savePNG=False):
         '''Make comparisons for each background process of pre and post fit projections.
         '''
         for proj in ['projx','projy']:
@@ -404,7 +404,7 @@ class Plotter(object):
                     out_pad_name = '{d}/base_figs/{p}_{reg}_{projn}'.format(d=self.dir,p=process,projn=projn, reg=region)
                     make_pad_1D(
                         out_pad_name, 
-                        post, [pre], totalBkg=pre, subtitle=slice_str, savePDF=True, savePNG=True, 
+                        post, [pre], totalBkg=pre, subtitle=slice_str, savePDF=_savePDF, savePNG=_savePNG,
                         datastyle='histe', year=self.twoD.options.year, extraText='',
             preVsPost=True  # This tells make_pad_1D() that we're not passing in data distributions but rather a non-data postfit dist and to relabel the legend
                     )
@@ -413,7 +413,7 @@ class Plotter(object):
 
         for process, padgroup in pads.groupby('process'):
             these_pads = padgroup.sort_values(by=['region','proj'])['pad'].to_list()
-        make_can('{d}/{p}_{proj}'.format(d=self.dir, p=process,proj=proj), these_pads)
+        make_can('{d}/{p}_{proj}'.format(d=self.dir, p=process,proj=proj), these_pads, 0, 0, _savePDF, _savePNG)
 
 
     def plot_transfer_funcs(self):
@@ -801,7 +801,7 @@ def make_pad_1D(outname, data, bkgs=[], signals=[], title='', subtitle='',
     _save_pad_generic(outname, pad, ROOTout, savePDF, savePNG)
     return pad
 
-def make_can(outname, padnames, padx=0, pady=0):
+def make_can(outname, padnames, padx=0, pady=0, _savePDF=True, _savePNG=True):
     '''Combine multiple pads/canvases into one canvas for convenience of viewing.
     Input pad order matters.
 
@@ -834,15 +834,23 @@ def make_can(outname, padnames, padx=0, pady=0):
         else:
             raise RuntimeError('histlist of size %s not currently supported: %s'%(len(padnames),[p.GetName() for p in padnames]))
 
-    pads = [Image.open(os.path.abspath(pname)) for pname in padnames]
+    pads = []
+    for pname in padnames:
+        if _savePNG or not pname.endswith('.png'):
+            if _savePDF or not pname.endswith('.pdf'):
+                pads.append(Image.open(os.path.abspath(pname)))
+    if len(pads) == 0:
+        return
+
     w, h = pads[0].size
     grid = Image.new('RGB', size=(padx*w, pady*h))
     
     for i, pad in enumerate(pads):
         grid.paste(pad, box=(i%padx*w, i//padx*h))
     
-    print ('Writing grid of images %s.pdf'%outname)
-    grid.save(outname+'.pdf')
+    if _savePDF:
+        print ('Writing grid of images %s.pdf'%outname)
+        grid.save(outname+'.pdf')
 
 def _get_start_stop(i,slice_idxs):
     start = slice_idxs[i]+1
@@ -857,9 +865,10 @@ def gen_projections(ledger, twoD, fittag, loadExisting=False, prefit=False):
     '''
     plotter = Plotter(ledger, twoD, fittag, loadExisting)
     print('\n\n*** Inside plot.py gen_projections, skipping plot_2D_distributions ***\n\n')
-    plotter.plot_2D_distributions()
-    plotter.plot_projections(prefit)
-    plotter.plot_pre_vs_post()
+    ## Last two options in each function: don't plot low-level histograms as pdf and png
+    plotter.plot_2D_distributions(False, False)
+    plotter.plot_projections(prefit, False, False)
+    plotter.plot_pre_vs_post(False, False)
     # plotter.plot_transfer_funcs()
 
 def make_systematic_plots(twoD):
@@ -907,7 +916,7 @@ def make_systematic_plots(twoD):
                 up.Draw('same hist')
                 down.Draw('same hist')
 
-                c.Print(twoD.tag+'/UncertPlots/Uncertainty_%s_%s_%s_%s.png'%(p,r,s,'proj'+axis),'png')
+                c.Print(twoD.tag+'/UncertPlots/Uncertainty_%s_%s_%s_%s.pdf'%(p,r,s,'proj'+axis),'pdf')
 
 def _make_pull_plot(data, bkg, preVsPost=False):
     pull = data.Clone(data.GetName()+"_pull")
@@ -1070,7 +1079,7 @@ def plot_correlation_matrix(varsToIgnore, threshold=0, corrText=False):
             corrMtrx.GetXaxis().SetLabelSize(0.01)
             corrMtrx.GetYaxis().SetLabelSize(0.01)
             corrMtrx.Draw('colztext' if corrText else 'colz')
-            corrMtrxCan.Print('plots_fit_%s/correlation_matrix.png'%fittag,'png')
+            #corrMtrxCan.Print('plots_fit_%s/correlation_matrix.png'%fittag,'png')
             corrMtrxCan.Print('plots_fit_%s/correlation_matrix.pdf'%fittag,'pdf')
 
             with open('plots_fit_%s/correlation_matrix.txt'%fittag,'w') as corrTxtFile:
@@ -1156,7 +1165,7 @@ def plot_gof(tag, subtag, seed=123456, condor=False):
         leg.Draw()
 
         cout.Print('gof_plot.pdf','pdf')
-        cout.Print('gof_plot.png','png')
+        #cout.Print('gof_plot.png','png')
 
     if condor:
             execute_cmd('rm -r '+tmpdir)
@@ -1195,14 +1204,14 @@ def plot_signalInjection(tag, subtag, injectedAmount, seed=123456, stats=True, c
         hsigpull.GetXaxis().SetTitle('(r-%s)/rErr'%injectedAmount)
         result_can.cd()
         hsigpull.Draw('pe')
-        result_can.Print('signalInjection_r%s_pull.png'%(str(injectedAmount).replace('.','p')),'png')
+        result_can.Print('signalInjection_r%s_pull.pdf'%(str(injectedAmount).replace('.','p')),'pdf')
 
         hsignstrength.Fit("gaus","L")
         hsignstrength.SetTitle('')
         hsignstrength.GetXaxis().SetTitle('r-%s'%injectedAmount)
         result_can.cd()
         hsignstrength.Draw('pe')
-        result_can.Print('signalInjection_r%s.png'%(str(injectedAmount).replace('.','p')),'png')
+        result_can.Print('signalInjection_r%s.pdf'%(str(injectedAmount).replace('.','p')),'pdf')
 
     if condor:
             execute_cmd('rm -r '+tmpdir)

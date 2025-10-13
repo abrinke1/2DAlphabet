@@ -24,10 +24,14 @@ ITOY    = int(sys.argv[1]) ## Specific toy to run; -1 is MCrounded or Datarounde
 CAT     = sys.argv[2] ## Event selection category, e.g. gg0lHi, LepLo, VBFjjIncl ...
 TOYSOURCE = str(sys.argv[3]) ## MC, Data
 YEAR    = str(sys.argv[4]) ## 2016, 2017, 2018, Run2
-SIGINJ = '' if len(sys.argv) < 6 else str(sys.argv[5])  ## mA_XX_sigBr_YYY
+FIT     = str(sys.argv[5]) ## 1x1C, 2s2C, etc, replaced by FITLIST if FIT = NxM
+SIGINJ  = '' if len(sys.argv) < 7 else str(sys.argv[6])  ## mA_XX_sigBr_YYY
+DATE    = '2025_09_31'
+
 eos_from_config = [eos for eos in (open('config/user.config','r')).readlines() if eos.startswith('EOS_DIR=')]
 EOS_DIR = eos_from_config[0].replace('EOS_DIR=','').replace('\n','')
-OUT_DIR = 'output' if ITOY < 0 else EOS_DIR+'/output'
+OUT_DIR = 'output/'+DATE if ITOY < 0 else EOS_DIR+'/output/'+DATE
+PATH    = EOS_DIR+'/plots/'+DATE+'/'+CAT+'/'+YEAR
 CARD_ONLY = True  ## Just generate cards, don't do any fits, plots, etc.
 
 MHREG   = 'pnet'    ## Higgs mass regression (mass, msoft, pnet)
@@ -37,15 +41,10 @@ if SIGINJ.startswith('mA_'):
     MASSA = SIGINJ[3:5]
     assert MASSA in MASSESA, '\nERROR!!! Invalid mass %s from %s. Quitting.' % (MASSA, SIGINJ)
     MASSESA = [MASSA]
-DATE    = '2025_08_15'
-PATH    = EOS_DIR+'/plots/'+DATE+'/'+CAT+'/'+YEAR
 UseMCToy   = (TOYSOURCE == 'MC')
 UseDataToy = (TOYSOURCE == 'Data')
 UseDataObs = (TOYSOURCE == 'Data' and ITOY < 0)
-## Polynomial fit: "x" for 2D with cross terms, "d" without cross terms
-## Prefix "e" for exponential, suffix "C" for centered at 0 or "M" for mass ratio
-# FITLIST = ['0x0','1x0','0x1','1x1','1x2','2x1','2x2','1d1','2d1','1d2','2d2','2s2',
-#            'e0x0','e1x0','e0x1','e1x1','e1x2','e2x1','e2x2','e2d1','e1d2','e2d2','e2s2']
+
 SS_DIR = '/eos/cms/store/user/ssawant/htoaa/analysis/'
 HB_DIR = '/afs/cern.ch/user/h/hboucham/public/'
 MD_DIR = '/afs/cern.ch/user/m/moanwar/public/'
@@ -58,24 +57,32 @@ elif CAT.startswith('Lep') or CAT.startswith('Zll') or CAT.startswith('Wlv') or 
     SIGS = ['WH','ttH','ZH']
 else: assert False, '\nInvalid category %s!!! Quitting.' % CAT
 
-WP      = 'WP60'    ## Hto4b efficiency working point for most categories
-FITLIST = ['1x1C']  ## Fail --> Pass transfer function for most categories
-NOMTF = 0.05
+WP      = 'WP60'  ## Hto4b efficiency working point for most categories
+FITLIST = [FIT]   ## Fail --> Pass transfer function (re-set to FIT below, if not NxM)
+NOMTF = 0.05      ## Best-guess average pass/fail ratio
 if CAT.startswith('Lep'):
     WP = 'WP60'
     FITLIST = ['1x1C']
 elif CAT.startswith('gg0l'):
     WP = 'WP40'
-    FITLIST = ['2m3C']
+    FITLIST = ['2s2C']
 elif CAT.startswith('VBFjj'):
     WP = 'WP40'
-    FITLIST = ['2s2C']
+    FITLIST = ['1x1C']
 elif CAT == 'VVBFjj':
     WP = 'WP4060'
-    FITLIST = ['2s2C']
+    FITLIST = ['1x1C']
 elif CAT.startswith('HadX'):
     WP = 'WP4060'
-    FITLIST = ['2s2C']
+    FITLIST = ['1x1C']
+elif CAT.startswith('Vjj'):
+    WP = 'WP60'
+    FITLIST = ['1x1C']
+
+## Re-set fit list to command-line option, or multiple options
+#FITLIST = ['0x0C','1d1C','1x1C','2s2C','2x2C','3m3C']
+if FIT != 'NxM':
+    FITLIST = [FIT]
 
 # elif CAT.startswith('Vjj'):
 #     #FITLIST = ['0x0','0x0smr','1d1C']
@@ -176,7 +183,7 @@ def _working_json():
 
     print('\n*** Using working_json = %s ***\n' % working_json)
     return working_json
-        
+
 def _load_rpf_smear(fitN):
     twoD_for_rpf_smear = TwoDAlphabet(_working_area(fitN), _working_json(),
                                       loadPrevious=True,
@@ -213,16 +220,19 @@ def _generate_poly(fit_name, verb=False):
     oX = int(fit_name[0])  ## Polynomial order in x
     oY = int(fit_name[2])  ## Polynomial order in y
     opr = fit_name[1]      ## Operator (x, d, s, B)
-    assert (oX >= 0 and oY >= 0 and oX < 4 and oY < 4 and opr in ['x','m','s','d']), 'ERROR!!! Invalid fit %s' % fit_name
+    assert (oX >= 0 and oY >= 0 and oX < 5 and oY < 5 and abs(oX-oY) < 3 and opr in ['x','q','m','s','d'] and (max(oX,oY) < 3 or opr != 'd')), 'ERROR!!! Invalid fit %s' % fit_name
     fit_poly = 'exp(@0)'  ## Overall normalization (exponential to ensure value > 0 with no double minima)
     nTerms = {}
     nTerms['x'] = (oX+1)*(oY+1)-1       ## All possible cross-terms
-    nTerms['m'] = oX+oY+1+(oX>1)+(oY>1) ## Most cross-terms, up to O(3), i.e. x*y, x*x*y, x*y*y
+    nTerms['q'] = oX+oY+1+(oX>1)+(oY>1)+(min(oX,oY)>1)+(oX>2)+(oY>2) ## Up to O(4): x*x*y*y, x*x*x*y, x*y*y*y
+    nTerms['m'] = oX+oY+1+(oX>1)+(oY>1) ## Most cross-terms, up to O(3): x*y, x*x*y, x*y*y
     nTerms['s'] = oX+oY+1               ## Single cross-term, x*y
     nTerms['d'] = oX+oY                 ## Decorrelated, no cross terms
     nTerm = nTerms[opr]
-    if opr == 'm': assert (oX > 0 and oY > 0 and oX+oY > 3), '\nNo need to use the "m" fit option in %s! Just use "x"' % fit_name
-    if opr == 's': assert (oX > 0 and oY > 0 and oX+oY > 2), '\nNo need to use the "s" fit option in %s! Just use "x"' % fit_name
+    assert (nTerm < 10), 'ERROR!!! Fit %s has %d terms, but formula parser only allows 10 (splits @10 into @1 0)' % (fit_name, nTerm)
+    if opr == 'q': assert (min(oX,oY) > 0 and max(oX,oY) > 2), '\nNo need to use the "q" fit option in %s! Just use "x"' % fit_name
+    if opr == 'm': assert (min(oX,oY) > 0 and      oX+oY > 3), '\nNo need to use the "m" fit option in %s! Just use "x"' % fit_name
+    if opr == 's': assert (min(oX,oY) > 0 and max(oX,oY) > 1), '\nNo need to use the "s" fit option in %s! Just use "x"' % fit_name
     ## Construct sum of absolute values of all polynomial terms
     sTerm = '1.0+'+'+'.join('abs(@%d)' % iT for iT in range(1,nTerm+1))
     fit_terms = []
@@ -231,13 +241,15 @@ def _generate_poly(fit_name, verb=False):
         fit_terms.append(('(@%d/(%s))' % (tX, sTerm.replace('+abs(@%d)' % tX,'')))+('*x'*tX))
     for tY in range(oX+1, oX+oY+1):
         fit_terms.append(('(@%d/(%s))' % (tY, sTerm.replace('+abs(@%d)' % tY,'')))+('*y'*(tY-oX)))
-    if oX > 0 and oY > 0 and opr == 's':
+    if min(oX,oY) > 0 and opr == 's':
         fit_terms.append('(@%d/(%s))*x*y' % (oX+oY+1, sTerm.replace('+abs(@%s)' % str(oX+oY+1),'')))
-    if oX > 0 and oY > 0 and (opr == 'x' or opr == 'm'):
+    if min(oX,oY) > 0 and (opr == 'x' or opr == 'm'):
         tXY = oX+oY
         for tX in range(1, oX+1):
             for tY in range(1, oY+1):
                 if opr == 'm' and tX+tY > 3:
+                    continue
+                if opr == 'q' and tX+tY > 4:
                     continue
                 tXY += 1
                 fit_terms.append(('(@%d/(%s))' % (tXY, sTerm.replace('+abs(@%d)' % tXY,'')))+('*x'*tX)+('*y'*tY))
@@ -471,7 +483,7 @@ def test_plot(SRorCR, fitN):
         print('\n\nWARNING!!! You may be unblinding prematurely!!!\n\n')
     twoD = TwoDAlphabet(_working_area(fitN), '%s/runConfig.json' % _working_area(fitN), loadPrevious=True)
     subsetAll = twoD.ledger.select(_select_signal, 'Htoaato4b_mA_', fitN)
-    twoD.StdPlots('mA_all_area', subsetAll)
+    twoD.StdPlots('mA_all_area', subsetAll, None, False)  ## Last argument is for plotting s+b fits
 
 def test_limit(SRorCR, fitN):
     '''Perform a blinded limit. To be blinded, the Combine algorithm (via option `--run blind`)

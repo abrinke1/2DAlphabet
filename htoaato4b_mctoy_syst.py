@@ -23,30 +23,28 @@ NTOY    = 100  ## Number of toys for goodness-of-fit (GoF) test
 ITOY    = int(sys.argv[1]) ## Specific toy to run; -1 is MCrounded or Datarounded, -2 is real data
 CAT     = sys.argv[2] ## Event selection category, e.g. gg0lHi, LepLo, VBFjjIncl ...
 TOYSOURCE = str(sys.argv[3]) ## MC, Data
-SIGINJ = '' if len(sys.argv) < 5 else str(sys.argv[4])  ## mA_XX_sigBr_YYY
+YEAR    = str(sys.argv[4]) ## 2016, 2017, 2018, Run2
+FIT     = str(sys.argv[5]) ## 1x1C, 2s2C, etc, replaced by FITLIST if FIT = NxM
+SIGINJ  = '' if len(sys.argv) < 7 else str(sys.argv[6])  ## mA_XX_sigBr_YYY
+DATE    = '2025_09_31'
+
 eos_from_config = [eos for eos in (open('config/user.config','r')).readlines() if eos.startswith('EOS_DIR=')]
 EOS_DIR = eos_from_config[0].replace('EOS_DIR=','').replace('\n','')
-OUT_DIR = 'output' if ITOY < 0 else EOS_DIR+'/output'
+OUT_DIR = 'output/'+DATE if ITOY < 0 else EOS_DIR+'/output/'+DATE
+PATH    = EOS_DIR+'/plots/'+DATE+'/'+CAT+'/'+YEAR
 CARD_ONLY = True  ## Just generate cards, don't do any fits, plots, etc.
 
 MHREG   = 'pnet'    ## Higgs mass regression (mass, msoft, pnet)
 MAREG   = '34a'     ## "a" boson mass regression (34a, 34d, 4a)
-#MASSESA = ['12']+[str(mA*5) for mA in range(3,13)]
-MASSESA = ['15','30','55']
+MASSESA = ['12']+[str(mA*5) for mA in range(3,13)]
 if SIGINJ.startswith('mA_'):
     MASSA = SIGINJ[3:5]
     assert MASSA in MASSESA, '\nERROR!!! Invalid mass %s from %s. Quitting.' % (MASSA, SIGINJ)
     MASSESA = [MASSA]
-YEAR    = 'Run2'    ## Data year
-DATE    = '2025_07_25'
-PATH    = EOS_DIR+'/plots/'+DATE+'/'+CAT+'/'+YEAR
 UseMCToy   = (TOYSOURCE == 'MC')
 UseDataToy = (TOYSOURCE == 'Data')
 UseDataObs = (TOYSOURCE == 'Data' and ITOY < 0)
-## Polynomial fit: "x" for 2D with cross terms, "d" without cross terms
-## Prefix "e" for exponential, suffix "C" for centered at 0 or "M" for mass ratio
-# FITLIST = ['0x0','1x0','0x1','1x1','1x2','2x1','2x2','1d1','2d1','1d2','2d2','2s2',
-#            'e0x0','e1x0','e0x1','e1x1','e1x2','e2x1','e2x2','e2d1','e1d2','e2d2','e2s2']
+
 SS_DIR = '/eos/cms/store/user/ssawant/htoaa/analysis/'
 HB_DIR = '/afs/cern.ch/user/h/hboucham/public/'
 MD_DIR = '/afs/cern.ch/user/m/moanwar/public/'
@@ -59,9 +57,9 @@ elif CAT.startswith('Lep') or CAT.startswith('Zll') or CAT.startswith('Wlv') or 
     SIGS = ['WH','ttH','ZH']
 else: assert False, '\nInvalid category %s!!! Quitting.' % CAT
 
-WP      = 'WP60'    ## Hto4b efficiency working point for most categories
-FITLIST = ['1x1C']  ## Fail --> Pass transfer function for most categories
-NOMTF = 0.05
+WP      = 'WP60'  ## Hto4b efficiency working point for most categories
+FITLIST = [FIT]   ## Fail --> Pass transfer function (re-set to FIT below, if not NxM)
+NOMTF = 0.05      ## Best-guess average pass/fail ratio
 if CAT.startswith('Lep'):
     WP = 'WP60'
     FITLIST = ['1x1C']
@@ -70,13 +68,21 @@ elif CAT.startswith('gg0l'):
     FITLIST = ['2s2C']
 elif CAT.startswith('VBFjj'):
     WP = 'WP40'
-    FITLIST = ['2s2C']
+    FITLIST = ['1x1C']
 elif CAT == 'VVBFjj':
     WP = 'WP4060'
-    FITLIST = ['2s2C']
-elif CAT == 'HadXLo':
+    FITLIST = ['1x1C']
+elif CAT.startswith('HadX'):
+    WP = 'WP4060'
+    FITLIST = ['1x1C']
+elif CAT.startswith('Vjj'):
     WP = 'WP60'
     FITLIST = ['1x1C']
+
+## Re-set fit list to command-line option, or multiple options
+#FITLIST = ['0x0C','1d1C','1x1C','2s2C','2x2C','3m3C']
+if FIT != 'NxM':
+    FITLIST = [FIT]
 
 # elif CAT.startswith('Vjj'):
 #     #FITLIST = ['0x0','0x0smr','1d1C']
@@ -95,10 +101,12 @@ elif CAT == 'HadXLo':
 
 
 '''--------------------------Helper functions---------------------------'''
-def _sig_names():
+def _sig_names(pmode=''):
     '''Set up list of signal names for multiple Higgs production modes, mass(a) values'''
     signames = []
     for sig in SIGS:
+        if len(pmode) > 0 and sig != pmode:
+            continue
         for massA in MASSESA:
             signames.append('%s_%stoaato4b_mA_%s_%s_%s_%s' % (CAT, sig, massA, YEAR, MHREG, MAREG))
     return signames
@@ -138,7 +146,7 @@ def _select_signal(row, args):
         else:
             return False
     elif 'Background_' in row.process:
-        if row.process == CAT+'Background_'+poly_order:
+        if row.process == CAT+YEAR+'Background_'+poly_order:
             return True
         else:
             return False
@@ -146,39 +154,47 @@ def _select_signal(row, args):
         return True
 
 def _working_area(fitN):
-    working_area = 'fits_%s_Htoaato4b_%s_%s_%s_%s_%s' % (CAT, MHREG, MAREG, WP, fitN, YEAR)
+    working_area = 'syst_fits_%s_Htoaato4b_%s_%s_%s_%s_%s' % (CAT, MHREG, MAREG, WP, fitN, YEAR)
     if UseMCToy:
         working_area = 'MCtoys/'+working_area+(('_toy%d' % ITOY) if ITOY >= 0 else '_MCrounded')
     if UseDataToy:
         working_area = 'Datatoys/'+working_area+(('_toy%d' % ITOY) if ITOY >= 0 else ('_Data' if ITOY == -2 else '_Datarounded'))
     if SIGINJ.startswith('mA_') and '_sigBr_' in SIGINJ:
         working_area += ('_'+SIGINJ)
-    working_area += '_syst'
     if not os.path.exists(OUT_DIR+'/'+working_area):
         os.system('mkdir -p '+OUT_DIR+'/'+working_area)
     return OUT_DIR+'/'+working_area
 
 def _working_json():
-    base_json = 'jsons/%s_Htoaato4b_Data_syst.json' % CAT
+    base_json = 'jsons/%s_Htoaato4b_Data.json' % CAT
     toy_str = ''
     if UseMCToy:
-        toy_str = ('_MCtoy%d_syst.json' % ITOY) if ITOY >= 0 else '_MCrounded_syst.json'
-        working_json = 'jsons/toys/'+DATE+'/'+CAT+'/'+YEAR+'/'+base_json[6:].replace('_Data_syst.json', toy_str)
+        toy_str = ('_MCtoy%d.json' % ITOY) if ITOY >= 0 else '_MCrounded.json'
+        working_json = 'jsons/toys/'+DATE+'/'+CAT+'/'+YEAR+'/'+base_json[6:].replace('_Data.json', toy_str)
     if UseDataToy:
-        toy_str = ('_Datatoy%d_syst.json' % ITOY) if ITOY >= 0 else ('_Data_syst.json' if ITOY == -2 else '_Datarounded_syst.json')
-        working_json = 'jsons/toys/'+DATE+'/'+CAT+'/'+YEAR+'/'+base_json[6:].replace('_Data_syst.json', toy_str)
+        toy_str = ('_Datatoy%d.json' % ITOY) if ITOY >= 0 else ('_Data.json' if ITOY == -2 else '_Datarounded.json')
+        working_json = 'jsons/toys/'+DATE+'/'+CAT+'/'+YEAR+'/'+base_json[6:].replace('_Data.json', toy_str)
     if SIGINJ.startswith('mA_') and '_sigBr_' in SIGINJ:
-        working_json = working_json.replace('_syst.json', '_'+SIGINJ+'_syst.json')
-    working_json = working_json.replace('_syst.json', '_%s_%s_syst.json' % (MHREG, MAREG))
+        working_json = working_json.replace('.json', '_'+SIGINJ+'.json')
+    working_json = working_json.replace('.json', '_%s_%s.json' % (MHREG, MAREG))
     if ITOY >= 0: working_json = EOS_DIR+'/'+working_json
+    special_dir  = '/afs/cern.ch/work/m/moanwar/public/hto2ato4b/json_files/'
+    special_json = special_dir+CAT+'_'+YEAR+'_Htoaato4b_MCrounded_pnet_34a.json'
+    #special_dir  = '/afs/cern.ch/work/a/abrinke1/public/HiggsToAA/2DAlphabet/CMSSW_11_3_4/src/2DAlphabet/'
+    #special_json = special_dir+'jsons/HadXLo_Htoaato4b_MC_syst.json'
+    working_json = special_json
+    print('\n*** Using working_json = %s ***\n' % working_json)
+    return working_json
 
-    special_test_json = 'jsons/gg0lHi_Htoaato4b_MCrounded_pnet_34a_syst.json'
-    return special_test_json
-        
 def _load_rpf_smear(fitN):
     twoD_for_rpf_smear = TwoDAlphabet(_working_area(fitN), _working_json(),
                                       loadPrevious=True,
                                       findreplace={'path':PATH, 'SIGNAME':_sig_names(),
+                                                   'SIGGGH':_sig_names('ggH'),
+                                                   'SIGVBFH':_sig_names('VBFH'),
+                                                   'SIGWH':_sig_names('WH'),
+                                                   'SIGZH':_sig_names('ZH'),
+                                                   'SIGTTH':_sig_names('ttH'),
                                                    'HIST':'$process_%s_$region_Nom' % WP})
 
     params_to_set =      twoD_for_rpf_smear.GetParamsOnMatch('Background_Fail.*par0', 'mA_all_area', 'b')
@@ -211,9 +227,19 @@ def _generate_poly(fit_name, verb=False):
     oX = int(fit_name[0])  ## Polynomial order in x
     oY = int(fit_name[2])  ## Polynomial order in y
     opr = fit_name[1]      ## Operator (x, d, s, B)
-    assert (oX >= 0 and oY >= 0 and oX < 4 and oY < 4 and opr in ['x','d','s']), 'ERROR!!! Invalid fit %s' % fit_name
+    assert (oX >= 0 and oY >= 0 and oX < 5 and oY < 5 and abs(oX-oY) < 3 and opr in ['x','q','m','s','d'] and (max(oX,oY) < 3 or opr != 'd')), 'ERROR!!! Invalid fit %s' % fit_name
     fit_poly = 'exp(@0)'  ## Overall normalization (exponential to ensure value > 0 with no double minima)
-    nTerm = (oX+1)*(oY+1)-1 if opr == 'x' else (oX+oY if opr == 'd' else (oX+oY+1 if opr == 's' else -99))
+    nTerms = {}
+    nTerms['x'] = (oX+1)*(oY+1)-1       ## All possible cross-terms
+    nTerms['q'] = oX+oY+1+(oX>1)+(oY>1)+(min(oX,oY)>1)+(oX>2)+(oY>2) ## Up to O(4): x*x*y*y, x*x*x*y, x*y*y*y
+    nTerms['m'] = oX+oY+1+(oX>1)+(oY>1) ## Most cross-terms, up to O(3): x*y, x*x*y, x*y*y
+    nTerms['s'] = oX+oY+1               ## Single cross-term, x*y
+    nTerms['d'] = oX+oY                 ## Decorrelated, no cross terms
+    nTerm = nTerms[opr]
+    assert (nTerm < 10), 'ERROR!!! Fit %s has %d terms, but formula parser only allows 10 (splits @10 into @1 0)' % (fit_name, nTerm)
+    if opr == 'q': assert (min(oX,oY) > 0 and max(oX,oY) > 2), '\nNo need to use the "q" fit option in %s! Just use "x"' % fit_name
+    if opr == 'm': assert (min(oX,oY) > 0 and      oX+oY > 3), '\nNo need to use the "m" fit option in %s! Just use "x"' % fit_name
+    if opr == 's': assert (min(oX,oY) > 0 and max(oX,oY) > 1), '\nNo need to use the "s" fit option in %s! Just use "x"' % fit_name
     ## Construct sum of absolute values of all polynomial terms
     sTerm = '1.0+'+'+'.join('abs(@%d)' % iT for iT in range(1,nTerm+1))
     fit_terms = []
@@ -222,12 +248,16 @@ def _generate_poly(fit_name, verb=False):
         fit_terms.append(('(@%d/(%s))' % (tX, sTerm.replace('+abs(@%d)' % tX,'')))+('*x'*tX))
     for tY in range(oX+1, oX+oY+1):
         fit_terms.append(('(@%d/(%s))' % (tY, sTerm.replace('+abs(@%d)' % tY,'')))+('*y'*(tY-oX)))
-    if oX > 0 and oY > 0 and opr == 's':
+    if min(oX,oY) > 0 and opr == 's':
         fit_terms.append('(@%d/(%s))*x*y' % (oX+oY+1, sTerm.replace('+abs(@%s)' % str(oX+oY+1),'')))
-    if oX > 0 and oY > 0 and opr == 'x':
+    if min(oX,oY) > 0 and (opr == 'x' or opr == 'm'):
         tXY = oX+oY
         for tX in range(1, oX+1):
             for tY in range(1, oY+1):
+                if opr == 'm' and tX+tY > 3:
+                    continue
+                if opr == 'q' and tX+tY > 4:
+                    continue
                 tXY += 1
                 fit_terms.append(('(@%d/(%s))' % (tXY, sTerm.replace('+abs(@%d)' % tXY,'')))+('*x'*tX)+('*y'*tY))
     if oX+oY > 0:
@@ -290,6 +320,11 @@ def test_make(SRorCR, fitN):
     twoD = TwoDAlphabet(_working_area(fitN), _working_json(),
                         loadPrevious=False, verbose=VERBOSE,
                         findreplace={'path':PATH, 'SIGNAME':_sig_names(),
+                                     'SIGGGH':_sig_names('ggH'),
+                                     'SIGVBFH':_sig_names('VBFH'),
+                                     'SIGWH':_sig_names('WH'),
+                                     'SIGZH':_sig_names('ZH'),
+                                     'SIGTTH':_sig_names('ttH'),
                                      'HIST':'$process_%s_$region_Nom' % WP,
                                      'HISTUp':'$process_%s_$region_$systUp' % WP,
                                      'HISTDown':'$process_%s_$region_$systDown' % WP})
@@ -320,7 +355,7 @@ def test_make(SRorCR, fitN):
         # * Definitely consider not using "forcePositive"
         # * Definitely consider disabling fix to constant 0, especially for low-stats categories
         # * Not that it should matter, but consider scaling default bin value to yield/nBins instead of 5.
-        fail_name = CAT+'Background_'+fl
+        fail_name = CAT+YEAR+'Background_'+fl
         qcd_f = BinnedDistribution(
                     fail_name, qcd_hists[fl],
                     binning_f, constant=False,
@@ -331,7 +366,7 @@ def test_make(SRorCR, fitN):
         # We specify the name of the process, the region it lives in, and the object itself.
         # The process is assumed to be a background and colored yellow but this can be changed
         # with optional arguments.
-        twoD.AddAlphaObj(CAT+'Background', fl, qcd_f)
+        twoD.AddAlphaObj(CAT+YEAR+'Background', fl, qcd_f)
 
         # As global variables, we've defined some different transfer function (TF) options.
         # We only want to include one of these at the time of fitting but we want to construct
@@ -365,7 +400,7 @@ def test_make(SRorCR, fitN):
             smear_nuis = {}
             smear_funcs = {}
             for shift in ['L','R','D','U']:
-                sf_name = '%sBackground_smear%s' % (CAT, shift)
+                sf_name = '%sBackground_smear%s' % (CAT+YEAR, shift)
                 sp_name = sf_name+'_par0'
                 ## Create "nuisances" similar to _createFuncVars in alphawrap.py
                 smear_nuis[shift] = {'name': sp_name,
@@ -390,7 +425,7 @@ def test_make(SRorCR, fitN):
         # Note that we have unique process names so they are identifiable
         # but we give them different titles so that they look pretty in
         # the final plot legends. First two args are just strings (process and region).
-        twoD.AddAlphaObj(CAT+'Background_'+fitN, ps, qcd_p, title=CAT+'Background')
+        twoD.AddAlphaObj(CAT+YEAR+'Background_'+fitN, ps, qcd_p, title=CAT+YEAR+'Background')
 
     ## End loop: for ps, fl in [['Pass', 'Fail'] for r in twoD.ledger.GetRegions() if r == 'Pass']
 
@@ -462,7 +497,7 @@ def test_plot(SRorCR, fitN):
         print('\n\nWARNING!!! You may be unblinding prematurely!!!\n\n')
     twoD = TwoDAlphabet(_working_area(fitN), '%s/runConfig.json' % _working_area(fitN), loadPrevious=True)
     subsetAll = twoD.ledger.select(_select_signal, 'Htoaato4b_mA_', fitN)
-    twoD.StdPlots('mA_all_area', subsetAll)
+    twoD.StdPlots('mA_all_area', subsetAll, None, False)  ## Last argument is for plotting s+b fits
 
 def test_limit(SRorCR, fitN):
     '''Perform a blinded limit. To be blinded, the Combine algorithm (via option `--run blind`)
@@ -554,12 +589,12 @@ def test_SigInj(SRorCR, massA, fitN):
 
 def test_GoF_plot(SRorCR, fitN):
     midMA = MASSESA[math.floor(len(MASSESA) / 2)]
-    '''Plot the GoF in fits_<CAT>_Htoaato4b_<MHREG>_<MAREG>_<WP>_<YEAR>/mA_<midMA>_area (condor=True indicates that condor jobs need to be unpacked)'''
+    '''Plot the GoF in syst_fits_<CAT>_Htoaato4b_<MHREG>_<MAREG>_<WP>_<YEAR>/mA_<midMA>_area (condor=True indicates that condor jobs need to be unpacked)'''
     plot.plot_gof(_working_area(fitN),
                   'mA_%s_area' % midMA, condor=False)
 
 def test_SigInj_plot(SRorCR, massA):
-    '''Plot the signal injection test for r=0 injected and stored in fits_<CAT>_Htoaato4b_<MHREG>_<MAREG>_<WP>_<YEAR>/mA_<massA>_area
+    '''Plot the signal injection test for r=0 injected and stored in syst_fits_<CAT>_Htoaato4b_<MHREG>_<MAREG>_<WP>_<YEAR>/mA_<massA>_area
     (condor=True indicates that condor jobs need to be unpacked)'''
     plot.plot_signalInjection(_working_area(fitN),
                               'mA_%s_area' % massA, injectedAmount=0, condor=False)
