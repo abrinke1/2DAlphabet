@@ -44,8 +44,8 @@
         "NAME": "mH",
         "TITLE": "m_{H} (GeV)",
         "MIN": 70,
-        "MAX": 180,
-        "NBINS": 11,
+        "MAX": 170,
+        "NBINS": 10,
         "SIGSTART": 110,
         "SIGEND": 140
       },

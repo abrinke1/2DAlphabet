@@ -12,7 +12,6 @@
     },
     "SIGNAME": {
       "SYSTEMATICS": [
-        "lumi"
       ],
       "SCALE": 1.0,
       "COLOR": 1,
@@ -44,8 +43,8 @@
         "NAME": "mH",
         "TITLE": "m_{H} (GeV)",
         "MIN": 70,
-        "MAX": 180,
-        "NBINS": 11,
+        "MAX": 170,
+        "NBINS": 10,
         "SIGSTART": 110,
         "SIGEND": 140
       },
@@ -70,10 +69,6 @@
     }
   },
   "SYSTEMATICS": {
-    "lumi": {
-      "CODE": 0,
-      "VAL": 1.018
-    }
   },
   "OPTIONS": {
     "overwrite": true,
